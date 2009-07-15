@@ -1,9 +1,10 @@
+PYINC=/usr/include/python2.5
 CXX=g++ -g -Wall -I/usr/local/include/colib $(OPT)
 CC=$(CXX)
 OPT=-O4 # -DUNSAFE
 LDLIBS=-lm 
 
-all: rast-test rast cedges
+all: rast-test rast cedges rast.py
 
 rast: rast.o librast.a
 rast-test: rast-test.o librast.a
@@ -15,12 +16,11 @@ LIBRAST=cedges.o calignmentp2d.o cinstancep2d.o \
 	crastrs2d.o
 librast.a: $(LIBRAST)
 	ar cr $@ $^
+rast.py: rast.i librast.a
+	swig -python -c++ rast.i 
+	g++ -g -fPIC -I$(PYINC) -shared rast_wrap.cxx -o _rast.so librast.a
 
 clean:
-	rm -f *.o *.a
-
-# $(LIBRAST): h/rast.h h/misc.h h/struct.h h/geo.h h/trie.h h/vecmat.h
-
-
+	rm -f *.so *wrap.cxx *.o rast.py ocropus.py
 
 
