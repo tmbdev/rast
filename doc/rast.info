@@ -1,0 +1,961 @@
+This is rast.info, produced by makeinfo version 4.0b from rast.texinfo.
+
+   This file documents the RAST library, a C++ library for geometric
+matching.
+
+   Copyright (C) 1990-2001 Thomas M. Breuel
+
+
+File: rast.info,  Node: Top,  Next: Introduction,  Prev: (dir),  Up: (dir)
+
+* Menu:
+
+* Introduction::
+* Commands::
+* Library::
+* Implementation::
+
+ --- The Detailed Node Listing ---
+
+Introduction
+
+* What is it?::
+* Applications::
+* Speed::
+* How can I use it?::
+* The Future::
+
+Commands
+
+* Canny::
+* Problem Instances::
+* Matching Points::
+* Matching Segments::
+* Matching Segments (Sampled)::
+* Lines from Points::
+* Lines from Segments::
+* Alignment::
+
+Using the Library
+
+* Library Headers::
+* Creating an Instance::
+* Interface::
+* Setting Parameters::
+* Defining Points::
+* Matching and Results::
+* Cleanup::
+
+Implementation
+
+* Files::
+* Style::
+* Code Maturity::
+* Canny Implementation::
+
+
+File: rast.info,  Node: Introduction,  Next: Commands,  Prev: Top,  Up: Top
+
+Introduction
+************
+
+* Menu:
+
+* What is it?::
+* Applications::
+* Speed::
+* How can I use it?::
+* The Future::
+
+
+File: rast.info,  Node: What is it?,  Next: Applications,  Prev: Introduction,  Up: Introduction
+
+What is it?
+===========
+
+   The RAST library is a library of algorithms for solving geometric
+matching problems under bounded error or Gaussian error models using
+branch-and-bound techniques.  The library is based on techniques
+developed originally as part of the author's thesis (Thomas Breuel:
+Geometric Aspects of Visual Object Recognition, MIT, 1992).  Several
+papers describing the techniques are included with this distribution.
+The author hopes that the release of this library will make the
+techniques accessible to more users.
+
+
+File: rast.info,  Node: Applications,  Next: Speed,  Prev: What is it?,  Up: Introduction
+
+What are some applications?
+===========================
+
+RAST has been used for a variety of applications, including:
+
+   * 2D and 3D visual object recognition
+
+   * High-accuracy character recognition
+
+   * Document analysis
+
+   * Line drawing interpretation
+
+
+File: rast.info,  Node: Speed,  Next: How can I use it?,  Prev: Applications,  Up: Introduction
+
+How fast is it?
+===============
+
+   Human beings use a variety of techniques (such as grouping and
+statistics) that let them perform very well in common cases, but also
+mean that they often don't find geometrically optimal solutions.  These
+abilities have been mimicked by some heuristic and probabilistic
+algorithms for object recognition.
+
+   RAST algorithms find guaranteed optimal or solutions with
+well-defined bounds on suboptimality to geometric matching problems,
+for any problem instance.  Compared to heuristic methods, these
+guarantees result in extra computation necessary to definitively
+exclude all suboptimal possibilities.  On the other hand, RAST
+algorithms implicitly use statistical information to prune of large
+branches of their search tree from consideration.
+
+   What it comes down to is that RAST algorithms, in practice, generally
+run within a factor of 2 or 3 of well-implemented alignment methods
+(using point location data structures) on hard recognition problems
+(problems involving lots of clutter).  If there is little clutter, they
+are much faster than alignment methods.
+
+   RAST algorithms also appear to be faster than more recently proposed
+branch-and-bound methods that use point location data structures instead
+of matchlists; please see the accompanying papers for why that is.
+
+
+File: rast.info,  Node: How can I use it?,  Next: The Future,  Prev: Speed,  Up: Introduction
+
+How can I use it?
+=================
+
+   There are three ways in which you might want to use this code:
+
+   * from the command line
+
+   * as a library
+
+   * digging into the algorithms themselves
+
+   For command line users, there is some documentation below.  The
+commands are `rast' (which takes a variety of subcommands), `rast-test'
+(simple regression test), and `cedges' (Canny-style edge detector).
+Files containing feature data are composed of text lines with columns
+for locations, angles, and weights.  Image files (for `cedges') are in
+NetPBM format.  File names are passed on the command line and
+parameters are passed in the environment.
+
+   For library users, the good news is that you only have to include
+`rast.h' and link with `librast.a'.  Furthermore, the library interface
+only uses C primitive datatypes, so you don't have to learn about any
+oddball data structures.  The bad news is that you have to look at
+`rast.h' for documentation for the individual interfaces.  You can also
+look at `rast.cc' and `rast-test.cc' for usage examples.  You should
+generally allocate a fresh match object, set all the settable
+parameters, add all the image and model features, call the `match()'
+method, and then read out the results.
+
+   If you are trying to understand the implementations themselves,
+please read the papers first.  Then, proceed to the implementation
+section below.
+
+
+File: rast.info,  Node: The Future,  Prev: How can I use it?,  Up: Introduction
+
+The Future
+==========
+
+   The RAST library represents algorithms that were developed more than
+a decade ago.  Meanwhile, the author has developed randomized versions
+and applied the techniques to many other problem domains (geometric
+coverage problems, statistical grouping, ellipse finding).  The author
+hopes to be able to make implementations of those newer algorithms
+separately.
+
+
+File: rast.info,  Node: Commands,  Next: Library,  Prev: Introduction,  Up: Top
+
+Commands
+********
+
+* Menu:
+
+* Canny::
+* Problem Instances::
+* Matching Points::
+* Matching Segments::
+* Matching Segments (Sampled)::
+* Lines from Points::
+* Lines from Segments::
+* Alignment::
+
+
+File: rast.info,  Node: Canny,  Next: Problem Instances,  Prev: Commands,  Up: Commands
+
+Canny Edge Detection
+====================
+
+Command Line
+============
+
+`cedges < pnm-image > detected-edges'
+
+File Formats
+============
+
+Input consists of PBM, PGM, or PPM format images.  For the output
+format, see below.  Output in the `eformat=segments' format is suitable
+for input to the `rast' segment matching below.
+
+Parameters
+==========
+
+`esx=3.0'
+     Gaussian convolution, sigma_x
+
+`esy=3.0'
+     Gaussian convolution, sigma_y
+
+`efrac=0.3'
+     fractile for noise estimation
+
+`elow=2.0'
+     low threshold for hysteresis thresholding
+
+`ehigh=4.0'
+     high threshold for hysteresis thresholding
+
+`eformat=segments'
+     output format; one of map: return edge map in PBM format
+        * chain: return chains of pixel coordinates separated by blank
+          lines
+
+        * poly: return polygonal approximation, polygons separated by
+          blank lines
+
+        * sampled: return subsampled edges
+
+        * segments: return line segments
+
+`eminlength=5.0'
+     minimum length of polygonal segment returned (for `eformat=poly')
+
+`emaxdist=0.5'
+     maximum deviation of a polygonal segment from an edge pixel (for
+     `eformat=poly')
+
+`espacing=4'
+     spacing between pixel samples (for `eformat=sampled')
+
+
+File: rast.info,  Node: Problem Instances,  Next: Matching Points,  Prev: Canny,  Up: Commands
+
+Generate Random Problem Instances
+=================================
+
+Command Line
+============
+
+`rast instance model-points-output-file image-points-output-file'
+
+File Formats
+============
+
+   `rast instance' generates files containing lists of points in the
+following format:
+# optional transformation parameters
+# in comments
+x y angle epsilon angle-epsilon
+...
+
+Parameters
+==========
+
+`seed=(random)'
+     seed used for the random number generator
+
+`image_size=512'
+     clutter points have coordinates in [0,image_size] x [0,image_size]
+
+`model_size=100'
+     model points have coordinates in [-model_size , model_size] x
+     [-model_size , model_size]
+
+`nclutter=50'
+     number of clutter points added to the transformed model
+
+`nmodel_total=20'
+     total number of points in the model
+
+`nmodel_unoccluded=10'
+     number of points from the model present in the image
+
+`error=5'
+     bound on random displacement of model points in instance
+
+`aerror=0.1'
+     bound on random displacement of model point orientation in instance
+
+`minscale=0.8'
+     minimum scale for instance
+
+`maxscale=1.2'
+     maximum scale for instance
+
+`verbose_params=0'
+     print parameter values
+
+
+File: rast.info,  Node: Matching Points,  Next: Matching Segments,  Prev: Problem Instances,  Up: Commands
+
+Matching of Oriented Point Features under Translation, Rotation, and Scale
+==========================================================================
+
+Command Line
+============
+
+`rast rast model-file image-file'
+
+File Formats
+============
+
+   Image and model files have the following format:
+# optional comments
+x y angle weight
+...
+Output from the program is in the form:
+match-rank upper-pbound lower-bound dx dy angle scale
+
+Parameters
+==========
+
+`maxresults=1'
+     number of matches to return
+
+`verbose=0'
+     report on progress
+
+`tolerance=1e-3'
+     weakness of the match
+
+`min_q=3'
+     minimum quality of a match
+
+`mindx=-1000'
+     minimum translation, x
+
+`mindy=-1000'
+     minimum translation, y
+
+`maxdx=1000'
+     maximum translation, x
+
+`maxdy=1000'
+     maximum translation, y
+
+`amin=0.0'
+     minimum rotation angle
+
+`amax=2*M_PI'
+     maximum rotation angle
+
+`minscale=0.8'
+     minimum scale
+
+`maxscale=1.2'
+     maximum scale
+
+`lsq=0'
+     bounded error (lsq=0) or robust least square (lsq=1)
+
+`eps=5.0'
+     error bound or least square cutoff
+
+`aeps=0.1'
+     error bound on feature orientations
+
+`verbose_params=0'
+     print parameter values
+
+
+File: rast.info,  Node: Matching Segments,  Next: Matching Segments (Sampled),  Prev: Matching Points,  Up: Commands
+
+Matching of Line Segment Features under Translation, Rotation, and Scale
+========================================================================
+
+Command Line
+============
+
+`rast srast model-file image-file'
+
+File Formats
+============
+
+   Image and model files have the following format:
+# optional comments
+x0 y0 x1 y1
+...
+Output from the program is in the form:
+match-rank upper-pbound lower-bound dx dy angle scale
+
+Parameters
+==========
+
+`maxresults=1'
+     number of matches to return
+
+`verbose=0'
+     report on progress
+
+`tolerance=1e-3'
+     weakness of the match
+
+`min_q=3'
+     minimum quality of a match
+
+`mindx=-1000'
+     minimum translation, x
+
+`mindy=-1000'
+     minimum translation, y
+
+`maxdx=1000'
+     maximum translation, x
+
+`maxdy=1000'
+     maximum translation, y
+
+`amin=0.0'
+     minimum rotation angle
+
+`amax=2*M_PI'
+     maximum rotation angle
+
+`minscale=0.8'
+     minimum scale
+
+`maxscale=1.2'
+     maximum scale
+
+`lsq=0'
+     bounded error (lsq=0) or robust least square (lsq=1)
+
+`eps=5.0'
+     error bound or least square cutoff
+
+`aeps=0.1'
+     error bound on feature orientations
+
+`eps_scale=0'
+     (works, but not documented)
+
+`ieps=eps'
+     (works, but not documented)
+
+`tolerance=1e-3'
+     weakness (in image space) of an acceptable match
+
+`qtolerance=1e-2'
+     fractional weakness (in quality) of an acceptable match
+
+`verbose_params=0'
+     print parameter values
+
+
+File: rast.info,  Node: Matching Segments (Sampled),  Next: Lines from Points,  Prev: Matching Segments,  Up: Commands
+
+Matching of Line Segment Features using Sampling
+================================================
+
+Command Line
+============
+
+`rast ssrast model-file image-file'
+
+   This command performs line segment matching like `rast srast', but
+it uses a sampling algorithm.
+
+File Formats
+============
+
+   Same as for the `rast srast' command.
+
+Parameters
+==========
+
+   Same as for the `rast srast' command.  The following additional
+parameter is available:
+`sdist'
+     Spacing of point samples on each line segment.
+
+
+File: rast.info,  Node: Lines from Points,  Next: Lines from Segments,  Prev: Matching Segments (Sampled),  Up: Commands
+
+Line Finding from Oriented Points
+=================================
+
+Command Line
+============
+
+`rast lines image-file'
+
+File Formats
+============
+
+   Image files have the following format:
+# optional comments
+x y angle weight
+...
+Output from the program is in the form:
+match-rank weight angle offset
+
+Parameters
+==========
+
+`maxresults=1'
+     number of matches to return
+
+`verbose=0'
+     report on match progress
+
+`error=2.0'
+     spatial error
+
+`angle_error=0.05'
+     permissible orientation error (for point featuers)
+
+`tolerance=0.1'
+     weakness of location of an acceptable match
+
+`angle_tolerance=0.001'
+     weakness of orientation of an acceptable match
+
+`lsq=0'
+     bounded error or robust least square error
+
+`usegrad=0'
+     use angles mod 180 or 360 degrees in orientation matches
+
+`verbose_params=0'
+     print parameter values
+
+
+File: rast.info,  Node: Lines from Segments,  Next: Alignment,  Prev: Lines from Points,  Up: Commands
+
+Line Finding from Line Segments
+===============================
+
+Command Line
+============
+
+`rast slines image-file'
+
+File Formats
+============
+
+   Image files have the following format:
+# optional comments
+x0 y0 x1 y1
+...
+Output from the program is in the form:
+time running-time
+match-rank weight angle offset
+
+Parameters
+==========
+
+`maxresults=1'
+     number of matches to return
+
+`verbose=0'
+     report on match progress
+
+`error=2.0'
+     spatial error
+
+`angle_error=0.05'
+     permissible orientation error (for point featuers)
+
+`tolerance=0.1'
+     weakness of location of an acceptable match
+
+`angle_tolerance=0.001'
+     weakness of orientation of an acceptable match
+
+`lsq=0'
+     bounded error or robust least square error
+
+`usegrad=0'
+     use angles mod 180 or 360 degrees in orientation matches
+
+`verbose_params=0'
+     print parameter values
+
+
+File: rast.info,  Node: Alignment,  Prev: Lines from Segments,  Up: Commands
+
+Recognition by Alignment
+========================
+
+Command Line
+============
+
+`rast align model-file image-file'
+
+   Used for testing only; not documented further.
+
+
+File: rast.info,  Node: Library,  Next: Implementation,  Prev: Commands,  Up: Top
+
+Using the Library
+*****************
+
+   Let us look at a simple sample program for using the library.
+
+* Menu:
+
+* Library Headers::
+* Creating an Instance::
+* Interface::
+* Setting Parameters::
+* Defining Points::
+* Matching and Results::
+* Cleanup::
+
+
+File: rast.info,  Node: Library Headers,  Next: Creating an Instance,  Prev: Library,  Up: Library
+
+Library Headers
+===============
+
+   We need to include the header file and write a `main' program:
+
+#include "rast.h"
+
+int main(int argc,char **argv) {
+    ...
+}
+
+   That's all the header files that the RAST library cares about.
+Let's now look at the `...' part.
+
+
+File: rast.info,  Node: Creating an Instance,  Next: Interface,  Prev: Library Headers,  Up: Library
+
+Creating an Instance
+====================
+
+   First, we create an instance of the match object, say, 2D point
+matching.
+
+RastP2D *rast = makeRastP2D();
+
+   Note that we call a function to create the instance; we can't use
+`new' because the actual implementation is completely opaque.
+
+
+File: rast.info,  Node: Interface,  Next: Setting Parameters,  Prev: Creating an Instance,  Up: Library
+
+Interface
+=========
+
+   Now, let's look at `rast.h' to figure out the interface.
+
+struct RastP2D {
+    // parameters
+    virtual void set_maxresults(int n) = 0;
+    virtual void set_verbose(bool value) = 0;
+    ...
+    // set model points
+    virtual void clear_msources() = 0;
+    virtual void add_msource(float x,float y,float a,float eps,float aeps) = 0;
+    // set image points
+    virtual void clear_ipoints() = 0;
+    virtual void add_ipoint(float x,float y,float a) = 0;
+    // perform match
+    virtual void match() = 0;
+    // get results
+    virtual int nresults() = 0;
+    virtual float ubound(int rank) = 0;
+    ...
+};
+
+
+File: rast.info,  Node: Setting Parameters,  Next: Defining Points,  Prev: Interface,  Up: Library
+
+Setting Parameters
+==================
+
+   So, there are a bunch of methods to set match parameters, a bunch of
+methods to define image and model points, a method to carry out the
+match, and some methods to read out the results.  Let's start by
+setting the match parameters.
+
+// set the match parameters
+rast->set_maxresults(5);        // 5 best results
+rast->set_verbose(true);        // report on progress while matching
+rast->set_tolerance(1e-2);      // weakness we are willing to accept
+rast->set_lsq(false);           // perform bounded error matching
+rast->set_min_q(5);             // a match must consist of at least 5 points
+rast->set_xrange(-500,500);     // set the ranges of transformation parameters
+rast->set_yrange(-500,500);
+rast->set_arange(0,2*M_PI);
+rast->set_srange(0.9,1.1);
+rast->set_unoriented(false);    // use angles mod 2*pi
+
+
+File: rast.info,  Node: Defining Points,  Next: Matching and Results,  Prev: Setting Parameters,  Up: Library
+
+Defining Model and Image Points
+===============================
+
+   Now, let's define the model and image points; we use a simple,
+self-explanatory file format here (different from what the `rast'
+command uses):
+
+float eps = 5.0;
+float aeps = 0.01;
+char buf[1024];
+while(fgets(buf,sizeof buf,stdin)) {
+    float x,y,a;
+    if(sscanf(buf,"model %g %g %g",&x,&y,&a)==3)
+        rast->add_msource(x,y,a,eps,aeps);
+    else if(sscanf(buf,"image %g %g %g",&x,&y,&a)==3)
+        rast->add_ipoint(x,y,a);
+    else
+        fprintf(stderr,"??? %s\n",buf);
+}
+
+
+File: rast.info,  Node: Matching and Results,  Next: Cleanup,  Prev: Defining Points,  Up: Library
+
+Matching and Obtaining Results
+==============================
+
+   The match problem has been defined and we can carry out the match
+now:
+
+rast->match();
+
+   Now, let's print out the results:
+
+for(int i=0;i<rast->nresults();i++) {
+    printf("rank %d lbound %g ubound %g dx %g dy %g angle %g scale %g\n",
+           i,
+           rast->lbound(i),
+           rast->ubound(i),
+           rast->translation(i,0),
+           rast->translation(i,1),
+           rast->angle(i),
+           rast->scale(i));
+}
+
+
+File: rast.info,  Node: Cleanup,  Prev: Matching and Results,  Up: Library
+
+Cleanup
+=======
+
+   That's it.  We should `delete' the `rast' pointer now to clean up.
+But you should probably make it a habit to use something like
+`auto_ptr' from the STL library or `autodel' from `struct.h' in the
+RAST library to avoid the need for cleanup.
+
+
+File: rast.info,  Node: Implementation,  Prev: Library,  Up: Top
+
+Implementation
+**************
+
+   Unfortunately, the C++ code is mostly uncommented.  Fortunately, if
+you look at the different RAST implementations, you will see that they
+are all very similar, so that if you figure out one, you'll understand
+most of them.
+
+* Menu:
+
+* Files::
+* Style::
+* Code Maturity::
+* Canny Implementation::
+
+
+File: rast.info,  Node: Files,  Next: Style,  Prev: Implementation,  Up: Implementation
+
+Files
+=====
+
+`rast.h'
+     public interface for RAST implementations
+
+`geo.h'
+     2D and 3D vectors
+
+`misc.h'
+     misc convenience functions, parameter parsing
+
+`struct.h'
+     data structures
+
+`trie.h'
+     point location data structure
+
+`vecmat.h'
+     vectors and matrixes
+
+`calignmentp2d.cc'
+     implementation of alignment algorithm
+
+`cinstancep2d.cc'
+     generates instances of point matching problem
+
+`clinesp2d.cc'
+     find lines from oriented points
+
+`cliness2d.cc'
+     find lines from line segments
+
+`crastp2d.cc'
+     match sets of oriented points under translation, rotation, scale
+
+`crasts2d.cc'
+     match line segments under translation, rotation, scale
+
+`crastss2d.cc'
+     match line segments under translation, rotation, scale, by sampling
+
+`rast-test.cc'
+     main program for regression testing
+
+`rast.cc'
+     main program for command line access to the library
+
+
+File: rast.info,  Node: Style,  Next: Code Maturity,  Prev: Files,  Up: Implementation
+
+Programming Style
+=================
+
+   * The C++ code doesn't use STL because STL lacks error checking and
+     has unpredictable performance.  Instead, it uses simple array and
+     stack classes.  When compiled with -DUNSAFE, they leave out bounds
+     checking, otherwise they include it.
+
+   * I generally use `struct', which is synonymous with `class'
+     followed by `public:'.  Since I achieve data hiding via abstract
+     base classes, that's sufficient.  Furthermore, I put methods
+     directly into the class definition, just like in Java.  I achieve
+     separate compilation by defining an abstract base class that only
+     contains virtual functions (and public data members, where
+     applicable).
+
+   * There is no use of delete outside destructors.  Objects are either
+     allocated in the parent and passed in by reference, the are held
+     in an `autodel<T>' smart pointer and automatically deleted on exit
+     from the enclosing scope, or they are reference counted using a
+     `counted<T>' smart pointer.  This avoids memory leaks and storage
+     management headaches.
+
+   * Errors are generally indicated by throwing a C string; you can
+     catch it with `catch(const char *msg) { ... }'.  While that is
+     kind of unusual (most C++ programs define lots of exception
+     types), it's simple and consistent, and there are no useful
+     exception types for this library other than error messages.  You
+     should be able to continue safely after an exception, since the
+     library is written so that resources should get cleaned up
+     properly.
+
+
+File: rast.info,  Node: Code Maturity,  Next: Canny Implementation,  Prev: Style,  Up: Implementation
+
+Code Maturity
+=============
+
+   This code has received some testing and usage, but it is by no means
+mature.  Like all numerical code, testing and verification can be a bit
+tricky.  Furthermore, while the RAST implementation it is based on has
+been around for many years, it used to be part of a much larger
+library.  What you are looking at here is a cut-and-paste job from
+various bits and pieces of code.
+
+   Be sure you understand what the tolerance parameters mean (see the
+papers).  The library returns weakly optimal solutions subject to the
+tolerance parameters.  Such solutions are usually numerically close to
+the optimal solution, but they don't have to be (however, when they
+aren't, they are good substitutes).
+
+   Fortunately, the way the code is written should make obscure memory
+or pointer bugs fairly unlikely.  Furthermore, all data structures
+should be self-adjusting, so that there generally aren't any arbitrary
+limits (some integers are represented as bytes or shorts, but you
+should be getting an error message if you exceed those limits).  If you
+are having problems, try first to enable bounds checking by adding
+`-DUNSAFE'.  You may also want to enable automatic fatal trapping of
+floating point exceptions if your FPU allows it.
+
+   Parameters are not always checked for sanity, so when in doubt, check
+them yourself.
+
+   If you want to reuse parts of the data structures or functions in the
+header files for other projects, keep in mind that not all the data
+structures have been tested very much.
+
+
+File: rast.info,  Node: Canny Implementation,  Prev: Code Maturity,  Up: Implementation
+
+Canny Edge Detector
+===================
+
+   The Canny edge detector is completely self-contained and can be
+compiled either as a command line program (-DMAIN) or used as a
+library.  You don't need to look there at all.
+
+`cedges.h'
+     public interface for Canny edge detector
+
+`cedges.cc'
+     implementation of Canny edge detection
+
+   (Strictly speaking, this implementation of Canny edge detection
+implements everything except for the Canny IIR filter; it uses
+Gaussians and their derivatives instead.)
+
+
+
+Tag Table:
+Node: Top198
+Node: Introduction894
+Node: What is it?1090
+Node: Applications1727
+Node: Speed2081
+Node: How can I use it?3498
+Node: The Future4984
+Node: Commands5452
+Node: Canny5730
+Node: Problem Instances7044
+Node: Matching Points8323
+Node: Matching Segments9600
+Node: Matching Segments (Sampled)11124
+Node: Lines from Points11754
+Node: Lines from Segments12727
+Node: Alignment13692
+Node: Library13937
+Node: Library Headers14274
+Node: Creating an Instance14640
+Node: Interface15029
+Node: Setting Parameters15768
+Node: Defining Points16722
+Node: Matching and Results17385
+Node: Cleanup17989
+Node: Implementation18329
+Node: Files18729
+Node: Style19710
+Node: Code Maturity21386
+Node: Canny Implementation23019
+
+End Tag Table

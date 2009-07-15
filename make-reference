@@ -1,0 +1,10 @@
+enscript -o - -2 -r \
+    -uREFERENCE \
+    --ul-gray=0 \
+    --ul-font=Helvetica-Bold140 \
+    --ul-style=filled \
+    --header='Reference Code -- Copyright (c) 1991-1995 by Thomas M. Breuel -- Please See Accompanying Letter' \
+    Makefile h/*.h *.cc doc/*.info \
+    experiments/Makefile \
+    experiments/bench-rp2tr.cc \
+    > _reference.ps

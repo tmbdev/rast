@@ -1,0 +1,31 @@
+#!/usr/bin/python
+ 
+from Tkinter import *
+from math import *
+import Pmw,string,os
+
+root = Tk()
+root.geometry("700x700")
+canvas = Pmw.ScrolledCanvas(root)
+
+image = PhotoImage(file=sys.argv[1])
+height = image.height()
+canvas.create_image(0,0,anchor=NW,image=image)
+    
+lines = open(sys.argv[2])
+while 1:
+    line = lines.readline()
+    if not line: break
+    if line[0]=="_": continue
+    if line[0]=="#": continue
+    if line=="\n": continue
+    line = line[:-1]
+    (x0,y0,x1,y1) = map(string.atof,string.split(line))[:4]
+    canvas.create_line(x0,height-y0,x1,height-y1,width=1,fill='red')
+lines.close()
+
+canvas.pack(expand=Y,fill=BOTH)
+canvas.resizescrollregion()
+
+root.configure(width=1024,height=768)
+root.mainloop()

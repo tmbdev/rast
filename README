@@ -1,0 +1,6 @@
+This is a distribution of some of the RAST family of algorithms for
+branch-and-bound feature matching.  Please see the doc/ subdirectory
+for more information.
+
+Please see the LICENSE file for details on the license under which
+you can use this code.

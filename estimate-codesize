@@ -1,0 +1,9 @@
+#!/bin/sh
+find ${@:-.} | 
+egrep '(\.cc|\.c|\.h)$' | 
+egrep -v '/old/|/JUNK/|\~' | 
+xargs cat | 
+sed 's/\/\/.*//' |
+sed 's/[ 	]*//g' |
+sort -u | 
+wc -l

@@ -1,0 +1,50 @@
+#!/usr/bin/python
+ 
+from Tkinter import *
+from math import *
+import Pmw,string
+
+root = Tk()
+root.geometry("700x700-0-0")
+canvas = Pmw.ScrolledCanvas(root)
+
+image = PhotoImage(file=sys.argv[1])
+height = image.height()
+canvas.create_image(0,0,anchor=NW,image=image)
+    
+if len(sys.argv)>3:
+    points = open(sys.argv[3])
+    while 1:
+	line = points.readline()
+	if not line: break
+	(x,y,a,w,n) = map(string.atof,string.split(line))
+	(x0,y0,x1,y1) = (x-1,y-1,x+1,y+1)
+	canvas.create_rectangle(x0,height-y1,x1,height-y0,outline='blue')
+
+lines = open(sys.argv[2])
+while 1:
+    line = lines.readline()
+    if not line: break
+    if line[0]=="_": continue
+    if line[0]=="P": 
+        (x,y,a) = map(string.atof,string.split(line[1:]))
+	(x0,y0,x1,y1) = (x-1,y-1,x+1,y+1)
+	canvas.create_rectangle(x0,height-y1,x1,height-y0,outline='orange')
+	continue
+    if line[0]=="S": 
+        (x0,y0,x1,y1,a) = map(string.atof,string.split(line[1:]))
+	canvas.create_line(x0,height-y0,x1,height-y1,width=3,fill='orange')
+	continue
+    (rank,weight,angle,dist) = map(string.atof,string.split(line))
+    (nx,ny) = (cos(angle),sin(angle))
+    r = 2000
+    if abs(ny)>abs(nx):
+        params = (0,dist/ny,r,(dist-r*nx)/ny)
+    else:
+        params = (dist/nx,0,(dist-r*ny)/nx,r)
+    (x0,y0,x1,y1) = params
+    canvas.create_line(x0,height-y0,x1,height-y1,fill='red')
+
+canvas.pack(expand=Y,fill=BOTH)
+canvas.resizescrollregion()
+root.mainloop()
