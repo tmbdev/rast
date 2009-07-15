@@ -6,6 +6,7 @@
 %include "std_wstring.i"
 %{
 #include "rast.h"
+#include "cedges.h"
 %}
 
 %inline %{
@@ -31,4 +32,4 @@ int zero() { return 0; }
 %}
 
 %include "rast.h"
-
+%include "cedges.h"
