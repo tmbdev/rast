@@ -193,6 +193,20 @@ namespace lumo_clinesp2d {
 	    state->matches = cresult;
 	}
 
+        void compute(float a0,float a1,float d0,float d1) {
+	    if(verbose) fprintf(stderr,"[#segments %d]\n",points.length());
+	    generation = 0;
+	    used.resize(points.length());
+	    fill(used,false);
+
+            CState initial;
+            for(int j=0;j<points.length();j++) initial->matches->push(j);
+            initial->region.set(a0,a1,d0,d1);
+            filter(initial);
+            queue.insert(initial,initial->weight);
+            compute_();
+        }
+
 	void compute() {
 	    if(verbose) fprintf(stderr,"[#segments %d]\n",points.length());
 	    generation = 0;
@@ -211,18 +225,19 @@ namespace lumo_clinesp2d {
 		queue.insert(initial,initial->weight);
 	    }
 #else
-	    {
-		CState initial;
-		for(int j=0;j<points.length();j++) initial->matches->push(j);
-		if(unoriented)
-		    initial->region.set(0,2*M_PI,0.0,maxoffset);
-		else
-		    initial->region.set(0,2*M_PI,-maxoffset,maxoffset);
-		filter(initial);
-		queue.insert(initial,initial->weight);
-	    }
+            CState initial;
+            for(int j=0;j<points.length();j++) initial->matches->push(j);
+            if(unoriented)
+                initial->region.set(0,2*M_PI,0.0,maxoffset);
+            else
+                initial->region.set(0,2*M_PI,-maxoffset,maxoffset);
+            filter(initial);
+            queue.insert(initial,initial->weight);
 #endif
+            compute_();
+        }
 	    
+	void compute_() {
 	    for(int iter=0;;iter++) {
 		if(queue.length()<1) break;
 		CState state;

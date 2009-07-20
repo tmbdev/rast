@@ -1,3 +1,4 @@
+namespace iupr_cedges {
 struct EdgeDetector {
     virtual void set_gauss(float sx,float sy) = 0;
     virtual void set_noise(float frac,float low,float high) = 0;
@@ -23,3 +24,4 @@ struct EdgeDetector {
 };
 
 EdgeDetector *makeEdgeDetector();
+}

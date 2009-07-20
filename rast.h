@@ -20,6 +20,7 @@ struct LinesP2D {
 
     // compute matches
     virtual void compute() = 0;
+    virtual void compute(float a0,float a1,float d0,float d1) = 0;
 
     // get results
     virtual int nresults() = 0;
