@@ -1,4 +1,4 @@
-PYTHON=python2.5
+PYTHON=python2.6
 PYINC=/usr/include/$(PYTHON)
 CXX=g++ -g -Wall -I/usr/local/include/colib $(OPT)
 CC=$(CXX)
@@ -22,6 +22,6 @@ _rast.so: rast.i librast.a
 	g++ -g -fPIC -I$(PYINC) -shared rast_wrap.cxx -o _rast.so librast.a
 
 clean:
-	rm -f *.so *wrap.cxx *.o rast.py ocropus.py
+	rm -f *.so *wrap.cxx *.o rast.py *.so
 
 
