@@ -26,8 +26,9 @@ install:
 	chmod ugo+rX /usr/local/lib/$(PYTHON)/dist-packages/rast.py
 	cp librast.a /usr/local/lib
 	chmod ugo+rX /usr/local/lib/librast.a
-	cp rast rast-test /usr/local/bin
+	cp rast rast-test cedges /usr/local/bin
 	chmod ugo+rX /usr/local/bin/rast
+	chmod ugo+rX /usr/local/bin/cedges
 	chmod ugo+rX /usr/local/bin/rast-test
 	cp rast.h /usr/local/include
 	chmod ugo+rX /usr/local/include/rast.h
