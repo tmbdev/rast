@@ -1,8 +1,8 @@
-PYTHON=python2.6
+PYTHON=python2.7
 PYINC=/usr/include/$(PYTHON)
 CXX=g++ -g -Wall -I/usr/local/include/colib $(OPT)
 CC=$(CXX)
-OPT=-O4 # -DUNSAFE
+OPT=-O4 -fPIC # -DUNSAFE
 LDLIBS=-lm 
 
 all: rast-test rast cedges _rast.so
@@ -20,7 +20,17 @@ librast.a: $(LIBRAST)
 _rast.so: rast.i librast.a
 	swig -python -c++ rast.i 
 	g++ -g -fPIC -I$(PYINC) -shared rast_wrap.cxx -o _rast.so librast.a
-
+install:
+	cp _rast.so rast.py /usr/local/lib/$(PYTHON)/dist-packages/.
+	chmod ugo+rX /usr/local/lib/$(PYTHON)/dist-packages/_rast.so
+	chmod ugo+rX /usr/local/lib/$(PYTHON)/dist-packages/rast.py
+	cp librast.a /usr/local/lib
+	chmod ugo+rX /usr/local/lib/librast.a
+	cp rast rast-test /usr/local/bin
+	chmod ugo+rX /usr/local/bin/rast
+	chmod ugo+rX /usr/local/bin/rast-test
+	cp rast.h /usr/local/include
+	chmod ugo+rX /usr/local/include/rast.h
 clean:
 	rm -f *.so *wrap.cxx *.o rast.py *.so
 
