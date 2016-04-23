@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "misc.h"
-#include "narray.h"
-#include "vec2.h"
+#include "colib/misc.h"
+#include "colib/narray.h"
+#include "colib/vec2.h"
 using namespace colib;
 
 #include "util.h"
@@ -15,15 +15,22 @@ using namespace colib;
 namespace lumo_crasts2d {
 
 struct Segment {
+  /// two vertices of segment
   vec2 p, q;
+  /// angle of dir 
   float a;
+  /// directional vector
   vec2 dir;
+  /// l0 = dir * p; l1 = dir * q;
   float l0, l1;
+  /// normal vector
   vec2 normal;
+  /// d = normal * p;
   float d;
   float weight;
   Segment() {}
   Segment(vec2 p, vec2 q) { set(p, q); }
+  /// set the segment's vertices with p & q inputs and calculate all segment's parameters
   void set(vec2 p, vec2 q) {
     this->p = p;
     this->q = q;
@@ -36,7 +43,11 @@ struct Segment {
     a = angleOf(dir);
   }
   float length() { return (q - p).magnitude(); }
+  /// sub = p + dir * l;
   vec2 sub(float l) { return p + dir * l; }
+  /// ### Check if a point is within the segment i.e. within rectangular region defined by the two vertices  
+  /// along segment's dir: \f$ l_0-\epsilon-\Delta < l_a < l_1+\epsilon+\Delta \f$ 
+  /// along segment's normal: \f$ err=max(0., |normal*a -d| - \Delta) < \epsilon \f$ 
   float within(float eps, float delta, vec2 a) {
     float la = dir * a;
     if (la < l0 - eps - delta || la > l1 + eps + delta) return 0;
@@ -53,6 +64,7 @@ struct Segment {
 	    return q;
 	}
 #else
+  ///   
   float lsq(float eps, float delta, vec2 a) {
     float la = dir * a;
     float q = 1.0;
@@ -64,9 +76,18 @@ struct Segment {
     if (dr > 0) q = 1.0 - sqr(dr * dr / (eps * eps));
     q *= max(0.0,
              1.0 - sqr(max(0.0, fabs(normal * a - d) - delta)) / (eps * eps));
-    return q;
+    return q; 
   }
 #endif
+
+  /**
+   * @brief check whether point a & b are within two boundaries of the segment
+   * @image within.png
+   * @return (high - low) + 2 * delta
+   * @n      where:
+   * @n             low = min(la,lb);
+   * @n             high = max(la,lb);
+   */
   float within(float eps, float delta, vec2 a, vec2 b) {
     float la = dir * a;
     float lb = dir * b;
@@ -79,6 +100,13 @@ struct Segment {
     if (errb > eps) return 0;
     return (high - low) + 2 * delta;
   }
+  /**
+   * @brief check whether point a & b are within two boundaries of the segment
+   * @return uq or lq = qa * qb * ((high - low) + 2 * delta)
+   * @n      where:
+   * @n             qa = max(0.0, 1.0 - sqr(erra) / sqr(eps))
+   * @n             qb = max(0.0, 1.0 - sqr(errb) / sqr(eps))
+   */
   float lsq(float eps, float delta, vec2 a, vec2 b) {
     float la = dir * a;
     float lb = dir * b;
@@ -114,24 +142,39 @@ static float unoriented_angle_diff(float a1, float a2) {
 }
 
 struct Region {
-  vector<float> low;
-  vector<float> high;
+  //vector<float> low; -> deprecated! use namespace annotation instead
+  rastUtils::vector<float> low;
+  //vector<float> high; -> deprecated! use namespace annotation instead
+  rastUtils::vector<float> high;
+  
+  /// @brief represents a region of parameters. Translation value of this region i.e. the center of region 
   vec2 translation() {
     return vec2((high(0) + low(0)) / 2.0, (high(1) + low(1)) / 2.0);
   }
+  
+  /// @brief Angle value of this region i.e. the center of region 
   float angle() { return (high(2) + low(2)) / 2.0; }
+  
+  /// @brief scale value of this region i.e. the center of region 
   float scale() { return (high(3) + low(3)) / 2.0; }
+  
+  /// @brief rotation value, combination of rotation and scale, of this region i.e. the center of region 
   vec2 rotation() {
     float a = angle();
     float s = scale();
     return vec2(s * cos(a), s * sin(a));
   }
+  
   float tdelta() {
     return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0);
   }
   float adelta() { return (high(2) - low(2)) / 2.0; }
+  
+  /// @brief scale max of region
   float smax() { return high(3); }
+  /// @brief scale min of region
   float smin() { return low(3); }
+  /// \f$ \Delta \f$ of scale calculated by \f${scale_{max} - scale_{min}} / 2 \f$
   float sdelta() { return (high(3) - low(3)) / 2.0; }
 };
 
@@ -152,6 +195,7 @@ typedef narray<Ipoint> IpointStack;
 
 class CRastS2D;
 
+/// a state associates with a region, a bound and list of all matches under that bound
 struct State {
   int depth;
   int generation;
@@ -175,11 +219,21 @@ struct State {
   }
 
   void init(narray<Msource> &msources, narray<Ipoint> &ipoints, CRastS2D &env);
+  
+  /**
+   * @brief evaluate a state under CRastS2D environment
+   * @param[in] CRastS2D env  
+   */
   void eval(CRastS2D &env);
 };
 
+
+
+/**
+ * @brief main class for RastS2D but struct is used instead
+ */
 struct CRastS2D : RastS2D {
-  vector<float> splitscale;
+  rastUtils::vector<float> splitscale;
 
   bool final(Region &r, float delta) {
     for (int i = 0; i < r.low.length(); i++) {
@@ -189,6 +243,7 @@ struct CRastS2D : RastS2D {
     return true;
   }
 
+  /// @brief split the region into two lelf/right regions like binary split
   void split(Region &left, Region &right, Region &r) {
     int dim = r.low.length();
     int mi = -1;
@@ -222,8 +277,8 @@ struct CRastS2D : RastS2D {
   float tolerance;
   float min_q;
   int maxresults;
-  vector<float> tlow;
-  vector<float> thigh;
+  rastUtils::vector<float> tlow;
+  rastUtils::vector<float> thigh;
   int generation;
   bool use_lsq;
   bool unoriented;
@@ -234,6 +289,11 @@ struct CRastS2D : RastS2D {
   bool eps_scales;
   float ieps;
 
+  /**
+   * @brief default constructor with default parameters
+   * @details 
+   * \n set the parameter space high/low threshold e.g. tlow, thigh, eps, aeps...
+   */
   CRastS2D() {
     verbose = false;
     tolerance = 1e-3;
@@ -252,6 +312,9 @@ struct CRastS2D : RastS2D {
     ieps = eps;
   }
 
+  /**
+   * @details priority = state->ubound + 1e-4 * state->lbound
+   */
   double priority(CState state) {
     double priority = 1e30;
     priority = state->ubound + 1e-4 * state->lbound;
@@ -263,6 +326,20 @@ struct CRastS2D : RastS2D {
   int n_transforms;
   int n_distances;
 
+  
+  /**
+   * @brief invokes matching 
+   * @details
+   * \n used has size equals all image points; At the beginning, none image point is used
+   * \n 1) initially, parameter space for searching is [tlow, thigh] and all match pairs possible
+   * \n 2) queue (which is a heap).insert(state, ubound); here ubound is priority of that state
+   * \n 3) queue starts with 1 element i.e. initial state
+   * \n 4) algorithm 1 is applied:
+   * \n --> pop top priority element & eval (i.e. calc upper bound, matches) it
+   * \n --> remove state with top priority
+   * \n --> check stop condition to terminate   
+   * \n --> if not terminate, split regions and eval them and put them to queue
+   */
   void start_match() {
     n_nodes = 0;
     n_transforms = 0;
@@ -271,15 +348,19 @@ struct CRastS2D : RastS2D {
     queue.clear();
     used.resize(ipoints.length());
     for (int i = 0; i < used.length(); i++) used[i] = false;
+    
     CState initial_state;
     initial_state->init(msources, ipoints, *this);
     initial_state->region.low.copyfrom(tlow);
     initial_state->region.high.copyfrom(thigh);
     initial_state->eval(*this);
     initial_state->generation = generation;
+    
     queue.insert(initial_state, initial_state->ubound);
+    
     for (int iter = 0;; iter++) {
-      if (queue.length() < 1) break;
+      if (queue.length() < 1) break;  // stop condition
+      
       CState top;
       top = queue.extractMax();
       // top->print(); printf("\n");
@@ -379,6 +460,8 @@ struct CRastS2D : RastS2D {
   void set_lsq(bool value) { use_lsq = value; }
   void set_qtolerance(float value) { qtolerance = value; }
   void set_unoriented(bool value) { unoriented = value; }
+  
+  /// @brief another call to invoke match
   void match() { start_match(); }
 
   // reading out results
@@ -393,6 +476,12 @@ struct CRastS2D : RastS2D {
   float scale(int rank) { return results[rank]->region.scale(); }
 };
 
+/**
+ * @details
+ * @n lbound = 0. 
+ * @n ubound = msources.length() 
+ * @n matches = all matches possible -> exhaustive search
+ */
 void State::init(narray<Msource> &msources, narray<Ipoint> &ipoints,
                  CRastS2D &env) {
   depth = 0;
@@ -402,6 +491,8 @@ void State::init(narray<Msource> &msources, narray<Ipoint> &ipoints,
   ubound = msources.length();
   Pairs &omatches = parent_matches;
   omatches.clear();
+  
+  // matches starts with exhaustive number of available matches i.e. all model points paired with all image points
   for (int i = 0; i < msources.length(); i++) {
     for (int j = 0; j < ipoints.length(); j++) {
       omatches.push(IMPair(i, j));
@@ -412,11 +503,21 @@ void State::init(narray<Msource> &msources, narray<Ipoint> &ipoints,
   for (int i = 0; i < msources.length(); i++) {
     total += msources[i].length();
   }
+  
+  // length of each model segment affects its weight
   for (int i = 0; i < msources.length(); i++) {
     msources[i].weight = msources[i].length() / total;
   }
   env.model_total = total;
 }
+
+
+/**
+ * @details within or lsq (selected by option) will be used to check the matching of image point
+ * @n       the matching point search algorithm is coded here   
+ * @param[out] lbound, ubound, nmatches (referenced to matches) belonging to state
+ * \n where \f$  \f$ 
+ */
 void State::eval(CRastS2D &env) {
   env.n_nodes++;
   MsourceStack &msources = env.msources;
@@ -444,10 +545,12 @@ void State::eval(CRastS2D &env) {
   for (int i = 0; i < n;) {
     env.n_transforms++;
     int msource_index = omatches[i].msource;
-    Msource &msource = msources[msource_index];
-    vec2 tmpoint0 = cmul(rotation, msource.p) + translation;
+    
+    // projected segment using region parameters
+    Msource &msource = msources[msource_index];   // model segment
+    vec2 tmpoint0 = cmul(rotation, msource.p) + translation;  
     vec2 tmpoint1 = cmul(rotation, msource.q) + translation;
-    Segment tmseg(tmpoint0, tmpoint1);
+    Segment tmseg(tmpoint0, tmpoint1);  
     float tmlength = tmseg.length();
     float nmsource = max(norm(msource.p), norm(msource.q));
     float delta = tdelta + nmsource * smax * adelta + nmsource * sdelta;
@@ -460,15 +563,21 @@ void State::eval(CRastS2D &env) {
     for (; i < n; i++) {
       if (omatches[i].msource != msource_index) break;
       env.n_distances++;
-      int ipoint_index = omatches[i].ipoint;
+      int ipoint_index = omatches[i].ipoint;  // get the image point
       if (used[ipoint_index]) continue;
       Ipoint &ipoint = ipoints[ipoint_index];
       float adiff;
+      
+      // calculate angle diff
       if (env.unoriented)
         adiff = unoriented_angle_diff(ipoint.a, tangle);
       else
         adiff = angle_diff(ipoint.a, tangle);
+      
+      // if angle diff is too big, this ipoint is skipped
       if (adiff > aloose) continue;
+      
+      // check ipoint is within projected model segment tmseg
       if (!env.use_lsq) {
         float uq = tmseg.within(eps, delta, ipoint.p, ipoint.q);
         if (uq <= 0.0) continue;

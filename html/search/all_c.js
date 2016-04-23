@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['sample',['Sample',['../structiupr__cedges_1_1CEdges_1_1Sample.html',1,'iupr_cedges::CEdges']]],
+  ['scale',['scale',['../structlumo__crasts2d_1_1Region.html#a5b01f19935fc71752c9153ae46639dd5',1,'lumo_crasts2d::Region']]],
+  ['scaled_5farray',['scaled_array',['../structiupr__cedges_1_1scaled__array.html',1,'iupr_cedges']]],
+  ['sdelta',['sdelta',['../structlumo__crasts2d_1_1Region.html#a4ea207ed15c9e334c0a48453aa823ae4',1,'lumo_crasts2d::Region']]],
+  ['seg2',['seg2',['../structseg2.html',1,'']]],
+  ['segment',['Segment',['../structlumo__crasts2d_1_1Segment.html',1,'lumo_crasts2d']]],
+  ['segment',['Segment',['../structlumo__crastrs2d_1_1Segment.html',1,'lumo_crastrs2d']]],
+  ['segment',['Segment',['../structlumo__cliness2d_1_1Segment.html',1,'lumo_cliness2d']]],
+  ['segment',['Segment',['../structlumo__crastss2d_1_1Segment.html',1,'lumo_crastss2d']]],
+  ['segment',['Segment',['../structSegment.html',1,'']]],
+  ['set',['set',['../structlumo__crasts2d_1_1Segment.html#ad3dc32c6466d65d659374b02627cbc13',1,'lumo_crasts2d::Segment']]],
+  ['smax',['smax',['../structlumo__crasts2d_1_1Region.html#aafc76f39ccb58361398e113d61ba799c',1,'lumo_crasts2d::Region']]],
+  ['smin',['smin',['../structlumo__crasts2d_1_1Region.html#a52c1421e1495c9087cc0ba4cc2878efe',1,'lumo_crasts2d::Region']]],
+  ['solution',['Solution',['../structlumo__calignmentp2d_1_1CAlignmentP2D_1_1Solution.html',1,'lumo_calignmentp2d::CAlignmentP2D']]],
+  ['split',['split',['../structlumo__crasts2d_1_1CRastS2D.html#a93c282ca026f46a93982655d20dc98c3',1,'lumo_crasts2d::CRastS2D']]],
+  ['start_5fmatch',['start_match',['../structlumo__crasts2d_1_1CRastS2D.html#a16b2a729acb6649af241d72ed09a3b72',1,'lumo_crasts2d::CRastS2D']]],
+  ['state',['State',['../structlumo__clinesp2d_1_1State.html',1,'lumo_clinesp2d']]],
+  ['state',['State',['../structlumo__crasts2d_1_1State.html',1,'lumo_crasts2d']]],
+  ['state',['State',['../structlumo__crastrs2d_1_1State.html',1,'lumo_crastrs2d']]],
+  ['state',['State',['../structlumo__crastp2d_1_1State.html',1,'lumo_crastp2d']]],
+  ['state',['State',['../structlumo__cliness2d_1_1State.html',1,'lumo_cliness2d']]],
+  ['state',['State',['../structlumo__crastss2d_1_1State.html',1,'lumo_crastss2d']]],
+  ['stdio',['Stdio',['../structiupr__cedges_1_1Stdio.html',1,'iupr_cedges']]],
+  ['sub',['sub',['../structlumo__crasts2d_1_1Segment.html#a380cefa2a66c31d086e8124af35c9572',1,'lumo_crasts2d::Segment']]]
+];

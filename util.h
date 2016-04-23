@@ -55,8 +55,13 @@ inline float normangleOf(float a) {
   return a;
 }
 
+/// namespace is created to avoid conflict with std::distance
+namespace rastUtils {
+
 inline float distance(const vec2 &a, const vec2 &b) {
   return (a - b).magnitude();
+}
+
 }
 
 inline float norm(vec2 &v) { return v.magnitude(); }
@@ -318,6 +323,10 @@ struct heap {
 };
 #endif
 
+/**
+ * @brief namespace rastUtils is created to discriminate "vector" used in RAST and std::vector
+ */
+namespace rastUtils {
 template <class T>
 struct vector {
   narray<T> v;
@@ -358,6 +367,7 @@ struct vector {
   void operator=(const vector<T> &source) { copy(v, source.v); }
   void operator=(vector<T> &source) { copy(v, source.v); }
 };
+}
 
 inline int mkseed() {
   int seed = igetenv("seed", -1);

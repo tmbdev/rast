@@ -52,11 +52,21 @@ struct Region {
   }
   float angle() { return (high(2) + low(2)) / 2.0; }
   float scale() { return (high(3) + low(3)) / 2.0; }
+  
+  /// @return vec2(s * cos(1), s * sin(a))
   vec2 rotation() {
     float a = angle();
     float s = scale();
     return vec2(s * cos(a), s * sin(a));
   }
+  /**
+   * @details
+   * \n original equation: \f$ t^{\delta} = \sqrt{(t^d_x)^2 + (t^d_y)^2} \f$
+   * \n approx. equation:
+   * \n with \f$ t^d = max(t^d_x, t^d_y) \f$ 
+   * \n \f$ \iff t^{\delta} = \sqrt{2}.\sqrt{(t^d)^2}  \f$ 
+   * \n \f$ \iff t^{\delta} = 1.4|t^d|  \f$ 
+   */
   float tdelta() {
     return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0);
   }
@@ -122,8 +132,14 @@ struct State {
 };
 
 struct CRastP2D : RastP2D {
+  
+  /// provides a mean to relatively compare between different units i.e. different dimensions of the search space
   narray<float> splitscale;
-
+  
+  /**
+   * @brief    check terminate condition that all dimensions are smaller than delta threshold 
+   * @details  v (magnitude of dimension i) = (r.high(i) - r.low(i)) * double(splitscale(i))  
+   */
   bool final(Region &r, float delta) {
     for (int i = 0; i < r.low.length(); i++) {
       float v = (r.high(i) - r.low(i)) * double(splitscale(i));
@@ -132,6 +148,7 @@ struct CRastP2D : RastP2D {
     return true;
   }
 
+  /// @brief split the space at the largest dimension
   void split(Region &left, Region &right, Region &r) {
     int dim = r.low.length();
     int mi = -1;
@@ -178,9 +195,11 @@ struct CRastP2D : RastP2D {
     tolerance = 1e-3;
     min_q = 3.0;
     maxresults = 1;
-    ::set(splitscale, 1.0, 1.0, 500.0, 500.0);
-    ::set(tlow, -1000.0, -1000.0, 0.0, 0.9);
-    ::set(thigh, 1000.0, 1000.0, 2 * M_PI, 1.1);
+    ::set(splitscale, 1.0, 1.0, 700.0, 10.0);
+//    ::set(tlow, -1000.0, -1000.0, 0.0, 0.9);
+    ::set(tlow, -15.0, -15.0, 0.0, 0.95);
+//    ::set(thigh, 1000.0, 1000.0, 2 * M_PI, 1.1);
+    ::set(thigh, 15.0, 15.0, M_PI/4., 1.05);
     generation = 1;
     use_lsq = false;
     unoriented = true;
@@ -197,6 +216,10 @@ struct CRastP2D : RastP2D {
   int n_transforms;
   int n_distances;
 
+  /**
+   * @details the stop condition is (1) top.ubound = top.lbound or (2) "final" is reached.
+   *          number matches defined in maxresults 
+   */
   void start_match() {
     n_nodes = 0;
     n_transforms = 0;
@@ -222,7 +245,7 @@ struct CRastP2D : RastP2D {
         queue.insert(top, priority(top));
         continue;
       }
-      if (verbose && iter % 10000 == 0) {
+      if (verbose && iter % 1000 == 0) {  // 10000
         float q = results.length() > 0 ? results[0]->ubound : 0.0;
         fprintf(stderr, "# %10d result %6g queue %7d", iter, q,
                 1 + queue.length());
@@ -313,6 +336,12 @@ struct CRastP2D : RastP2D {
   float scale(int rank) { return results[rank]->region.scale(); }
 };
 
+
+/**
+ * @details
+ * \n loose = \f$ \epsilon + \delta \f$ 
+ * \n delta = delta(tdelta, adelta, sdelta) where tdelta, adelta, sdelta are calculated from region
+ */
 void State::eval(CRastP2D &env) {
   env.n_nodes++;
   MsourceStack &msources = env.msources;
@@ -363,7 +392,7 @@ void State::eval(CRastP2D &env) {
       else
         adiff = angle_diff(ipoint.a, tangle);
       if (adiff > aloose) continue;
-      float err = distance(tmpoint, ipoint.p);
+      float err = rastUtils::distance(tmpoint, ipoint.p);
       if (err > loose) continue;
       if (env.use_lsq) {
         float ud = max(0.0F, err - delta);

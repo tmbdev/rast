@@ -1,5 +1,14 @@
 /* Copyright (c) 1990-1995 by Thomas M. Breuel */
 
+/// @brief rast.h is a header without header guard!
+#include "misc.h"
+#include "narray.h"
+#include "vec2.h"
+
+#include "util.h"
+#include "opencv2/highgui/highgui.hpp"
+
+
 // line finding using the RAST algorithm
 
 struct LinesP2D {
@@ -95,7 +104,104 @@ struct InstanceP2D {
   virtual float get_param(int i) = 0;
 };
 
-InstanceP2D *makeInstanceP2D();
+
+//InstanceP2D *makeInstanceP2D();
+
+namespace lumo_cinstancep2d {
+
+
+  /// a point with angle value
+  struct avec {
+    vec2 p;
+    float a;
+  };
+  
+  typedef avec Msource;
+  typedef avec Mpoint;
+  typedef avec Ipoint;
+    
+  /// @author Shawn Le
+  /// @date   08/Mar/2016
+  /// @brief CInstanceP2D declaration is moved to header file. This is supposed to be more proper  
+  struct CInstanceP2D : InstanceP2D {
+    int image_size;
+    int model_size;
+  
+    int nclutter;
+    /// number of model points
+    int nmodel_total;
+    int nmodel_unoccluded;
+    float error;
+    /// angle error
+    float aerror;
+    float minscale;
+    float maxscale;
+  
+    vec2 translation;
+    float angle;
+    float scale;
+    float get_param(int i); 
+      
+    /// model point array 
+    narray<Msource> msources;
+    /// image point array
+    narray<Ipoint> ipoints;
+    
+    cv::Mat disp_img;
+  
+    CInstanceP2D();
+  
+    void init(); 
+    
+    /**
+     * @author Shawn Le 
+     * @date   07/Mar/2016
+     * @brief  read input data instead of using generated random data
+     */ 
+    //int readInputs(cv::Mat& img_out);
+    int readInputs();
+    
+    /// generate a random test data i.e. model and image
+    /**
+     * @details 
+     * \n 1) model points are randomly created i.e.
+     * \n --> m.p vec2(urand(-model_size, model_size), urand(-model_size, model_size))
+     * \n --> m.a = urand(0.0, 2 * M_PI)
+     * \n 2) projected image points + noise are created 
+     * \n --> p.p = cmul(rotation, msources[i].p) + translation + randomUniformVectorFromCircle(error);
+     * \n --> p.a = msources[i].a + angle + urand(-aerror, aerror);
+     * \n 3) cluttered image points are randomly created
+     * @param[out] msources with msources[i].p and msources[i].a
+     * @param[out] ipoints  with ipoints[i].p and ipoints[i].a
+     */
+    void generate(); 
+  
+    void set_image_size(int r);
+    void set_model_size(int r);
+    void set_nclutter(int v);
+    void set_nmodel_total(int v);
+    void set_nmodel_unoccluded(int v);
+    void set_error(float v);
+    void set_aerror(float v);
+    void set_srange(float min, float max); 
+    int nimage();
+    /// @param[out] a -> orientation value e.g. angle of the point
+    void get_image(float &x, float &y, float &a, int i); 
+    int nmodel(); 
+    void get_model(float &x, float &y, float &a, int i); 
+  
+    ~CInstanceP2D(); 
+  };
+  
+
+} 
+
+
+
+lumo_cinstancep2d::CInstanceP2D *makeCInstanceP2D();
+
+lumo_cinstancep2d::CInstanceP2D *makeInstanceP2D();
+
 
 // point matching using the RAST algorithm
 

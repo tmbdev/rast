@@ -1,6 +1,10 @@
 PYTHON=python2.7
 PYINC=/usr/include/$(PYTHON)
-CXX=g++ -g -Wall -I/usr/local/include/colib $(OPT)
+
+CFLAGS = `pkg-config --cflags opencv`
+LIBS = `pkg-config --libs opencv`
+
+CXX=g++ $(CFLAGS) $(LIBS) -g -Wall -I/usr/local/include/colib $(OPT)
 CC=$(CXX)
 OPT=-O4 -fPIC # -DUNSAFE
 LDLIBS=-lm 

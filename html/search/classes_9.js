@@ -1,0 +1,19 @@
+var searchData=
+[
+  ['sample',['Sample',['../structiupr__cedges_1_1CEdges_1_1Sample.html',1,'iupr_cedges::CEdges']]],
+  ['scaled_5farray',['scaled_array',['../structiupr__cedges_1_1scaled__array.html',1,'iupr_cedges']]],
+  ['seg2',['seg2',['../structseg2.html',1,'']]],
+  ['segment',['Segment',['../structlumo__crasts2d_1_1Segment.html',1,'lumo_crasts2d']]],
+  ['segment',['Segment',['../structlumo__crastrs2d_1_1Segment.html',1,'lumo_crastrs2d']]],
+  ['segment',['Segment',['../structlumo__cliness2d_1_1Segment.html',1,'lumo_cliness2d']]],
+  ['segment',['Segment',['../structlumo__crastss2d_1_1Segment.html',1,'lumo_crastss2d']]],
+  ['segment',['Segment',['../structSegment.html',1,'']]],
+  ['solution',['Solution',['../structlumo__calignmentp2d_1_1CAlignmentP2D_1_1Solution.html',1,'lumo_calignmentp2d::CAlignmentP2D']]],
+  ['state',['State',['../structlumo__clinesp2d_1_1State.html',1,'lumo_clinesp2d']]],
+  ['state',['State',['../structlumo__crastrs2d_1_1State.html',1,'lumo_crastrs2d']]],
+  ['state',['State',['../structlumo__cliness2d_1_1State.html',1,'lumo_cliness2d']]],
+  ['state',['State',['../structlumo__crastss2d_1_1State.html',1,'lumo_crastss2d']]],
+  ['state',['State',['../structlumo__crastp2d_1_1State.html',1,'lumo_crastp2d']]],
+  ['state',['State',['../structlumo__crasts2d_1_1State.html',1,'lumo_crasts2d']]],
+  ['stdio',['Stdio',['../structiupr__cedges_1_1Stdio.html',1,'iupr_cedges']]]
+];
