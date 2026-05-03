@@ -1,6 +1,9 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
+#ifndef RAST_SRC_CEDGES_H_
+#define RAST_SRC_CEDGES_H_
+
 namespace iupr_cedges {
 struct EdgeDetector {
   virtual void set_gauss(float sx, float sy) = 0;
@@ -27,4 +30,6 @@ struct EdgeDetector {
 };
 
 EdgeDetector *makeEdgeDetector();
-}
+}  // namespace iupr_cedges
+
+#endif  // RAST_SRC_CEDGES_H_

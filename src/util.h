@@ -1,8 +1,8 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
-#ifndef util_h__
-#define util_h__
+#ifndef RAST_SRC_UTIL_H_
+#define RAST_SRC_UTIL_H_
 
 #include "narray.h"
 #include <string.h>
@@ -375,4 +375,4 @@ inline double now() {
   return tv.tv_sec + 1e-6 * tv.tv_usec;
 }
 
-#endif
+#endif  // RAST_SRC_UTIL_H_

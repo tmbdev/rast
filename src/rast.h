@@ -1,6 +1,9 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
+#ifndef RAST_SRC_RAST_H_
+#define RAST_SRC_RAST_H_
+
 // line finding using the RAST algorithm
 
 struct LinesP2D {
@@ -285,3 +288,5 @@ struct AlignmentP2D {
 };
 
 AlignmentP2D *makeAlignmentP2D();
+
+#endif  // RAST_SRC_RAST_H_

@@ -1,8 +1,8 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
-#ifndef trie__
-#define trie__
+#ifndef RAST_SRC_TRIE_H_
+#define RAST_SRC_TRIE_H_
 
 #include "util.h"
 #include "narray.h"
@@ -97,4 +97,4 @@ struct Trie2 {
   }
 };
 
-#endif
+#endif  // RAST_SRC_TRIE_H_
