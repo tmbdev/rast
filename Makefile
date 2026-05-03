@@ -6,6 +6,7 @@ OPT=-O3 -fPIC # -DUNSAFE
 LDLIBS=-lm
 
 VPATH = src:tests:bindings/python
+SRCDIR = src
 
 all: rast-test rast cedges _rast.so
 
@@ -21,7 +22,7 @@ librast.a: $(LIBRAST)
 	ar cr $@ $^
 
 _rast.so: rast.i librast.a
-	swig -python -c++ -Isrc -outdir . -o rast_wrap.cxx $<
+	swig -python -c++ -I$(SRCDIR) -outdir . -o rast_wrap.cxx $<
 	$(CXX) -fPIC -I$(PYINC) -shared rast_wrap.cxx -o _rast.so librast.a
 
 install:
@@ -34,7 +35,7 @@ install:
 	chmod ugo+rX /usr/local/bin/rast
 	chmod ugo+rX /usr/local/bin/cedges
 	chmod ugo+rX /usr/local/bin/rast-test
-	cp src/rast.h /usr/local/include
+	cp $(SRCDIR)/rast.h /usr/local/include
 	chmod ugo+rX /usr/local/include/rast.h
 
 clean:

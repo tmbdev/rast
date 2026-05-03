@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Build driver for the rast project. Invoked by `pixi run build`.
-# Uses the vendored colib headers in ./colib.
+# Compiles into ./_build/, using the vendored colib headers in src/colib.
 set -euo pipefail
 
+mkdir -p _build
 PYINC=$(python -c 'import sysconfig; print(sysconfig.get_path("include"))')
-exec make \
-    CXX="$CXX -g -Wall -Isrc -Isrc/colib -O3 -fPIC" \
+cd _build
+exec make -f ../Makefile \
+    VPATH=../src:../tests:../bindings/python \
+    SRCDIR=../src \
+    CXX="$CXX -g -Wall -I../src -I../src/colib -O3 -fPIC" \
     PYINC="$PYINC" \
     "$@"

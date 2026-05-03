@@ -12,6 +12,10 @@ swig = "3.0.*"
 python = ">=3.9"
 numpy = "*"
 
+# Make the SWIG-built rast module importable from `pixi run python ...`.
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/_build"
+
 [tasks.build]
 description = "Build librast.a, rast, rast-test, cedges, and _rast.so."
 cmd = "./build.sh"
@@ -21,4 +25,4 @@ description = "Build the C++ targets only (skip the Python binding)."
 cmd = "./build.sh librast.a rast rast-test cedges"
 
 [tasks.clean]
-cmd = "make clean"
+cmd = "rm -rf _build"
