@@ -8,7 +8,7 @@ LDLIBS=-lm
 VPATH = src:tests:bindings/python
 SRCDIR = src
 
-all: rast-test rast cedges _rast.so
+all: rast-test rast cedges _rast.so tests
 
 rast: rast.o librast.a
 rast-test: rast-test.o librast.a
@@ -25,6 +25,11 @@ _rast.so: rast.i librast.a
 	swig -python -c++ -I$(SRCDIR) -outdir . -o rast_wrap.cxx $<
 	$(CXX) -fPIC -I$(PYINC) -shared rast_wrap.cxx -o _rast.so librast.a
 
+DOCTESTS = calignmentp2d_test.o cinstancep2d_test.o clinesp2d_test.o cliness2d_test.o \
+	crastp2d_test.o crastrs2d_test.o crasts2d_test.o crastss2d_test.o
+tests: test_main.o $(DOCTESTS) librast.a
+	$(CXX) -o tests test_main.o $(DOCTESTS) librast.a -lm
+
 install:
 	cp _rast.so rast.py /usr/local/lib/$(PYTHON)/dist-packages/.
 	chmod ugo+rX /usr/local/lib/$(PYTHON)/dist-packages/_rast.so
@@ -39,4 +44,4 @@ install:
 	chmod ugo+rX /usr/local/include/rast.h
 
 clean:
-	rm -f *.so *wrap.cxx *.o rast.py *.a rast rast-test cedges
+	rm -f *.so *wrap.cxx *.o rast.py *.a rast rast-test cedges tests

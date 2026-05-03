@@ -12,6 +12,7 @@ swig = "3.0.*"
 python = ">=3.9"
 numpy = "*"
 clang-format = "*"
+doctest = "*"
 
 # Make the SWIG-built rast module importable from `pixi run python ...`.
 [activation.env]
@@ -24,6 +25,10 @@ cmd = "./build.sh"
 [tasks.build-cpp]
 description = "Build the C++ targets only (skip the Python binding)."
 cmd = "./build.sh librast.a rast rast-test cedges"
+
+[tasks.test]
+description = "Build and run the doctest suite."
+cmd = "./build.sh tests && _build/tests"
 
 [tasks.clean]
 cmd = "rm -rf _build"
