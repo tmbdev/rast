@@ -1,3 +1,6 @@
+// Copyright 1990-2026 by Thomas M. Breuel
+// Licensed under the Apache License, Version 2.0 (see LICENSE)
+
 namespace iupr_cedges {
 struct EdgeDetector {
   virtual void set_gauss(float sx, float sy) = 0;

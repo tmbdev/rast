@@ -1,7 +1,5 @@
-/* Copyright 1992-1995 by Thomas M. Breuel */
-/* This code comes without any warranty whatsoever.  Use at your own risk. */
-/* Licensed under the terms of the GNU General Public License, Version 2 */
-/* Contact info: http://www.lumo.com/ */
+// Copyright 1990-2026 by Thomas M. Breuel
+// Licensed under the Apache License, Version 2.0 (see LICENSE)
 
 /* Compile with: g++ -g -O2 -DMAIN cedges.cc */
 

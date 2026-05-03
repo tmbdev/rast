@@ -1,4 +1,5 @@
-/* Copyright (c) 1990-1995 by Thomas M. Breuel */
+// Copyright 1990-2026 by Thomas M. Breuel
+// Licensed under the Apache License, Version 2.0 (see LICENSE)
 
 #ifndef trie__
 #define trie__
