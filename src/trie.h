@@ -7,7 +7,6 @@
 #include "util.h"
 #include "narray.h"
 #include "narray-util.h"
-using namespace colib;
 
 #if 0
 inline int clamp(int x, int n) {
@@ -24,7 +23,7 @@ struct Trie1 {
     float x;
   };
   float eps;
-  narray<narray<Item *> > buckets;
+  colib::narray<colib::narray<Item *> > buckets;
   void init(float eps, int w) {
     this->eps = eps;
     buckets.resize(int(w / eps) + 1);
@@ -35,7 +34,7 @@ struct Trie1 {
     item.x = x;
     item.key = key;
   }
-  void query(narray<T> &keys, float x0, float x1) {
+  void query(colib::narray<T> &keys, float x0, float x1) {
     for (int i = clamp(x0 / eps, buckets.dim(0)),
              n = clamp(x1 / eps, buckets.dim(0));
          i <= n; i++) {
@@ -56,7 +55,7 @@ struct Trie2 {
     float x, y;
   };
   float eps;
-  narray<narray<Item> > buckets;
+  colib::narray<colib::narray<Item> > buckets;
   int xoffset, yoffset;
   void init(float eps, int xmax, int ymax, int xmin = 0, int ymin = 0) {
     int w = xmax - xmin;
@@ -76,7 +75,7 @@ struct Trie2 {
     item.y = y;
     item.key = key;
   }
-  void query(narray<T> &keys, float x0, float y0, float x1, float y1) {
+  void query(colib::narray<T> &keys, float x0, float y0, float x1, float y1) {
     x0 -= xoffset;
     y0 -= yoffset;
     x1 -= xoffset;

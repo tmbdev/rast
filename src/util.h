@@ -7,23 +7,22 @@
 #include "narray.h"
 #include <string.h>
 
-using namespace colib;
 
 template <class T, class S>
-inline void set(narray<T> &a, S v0) {
+inline void set(colib::narray<T> &a, S v0) {
   a.resize(1);
   a(0) = v0;
 }
 
 template <class T, class S>
-inline void set(narray<T> &a, S v0, S v1) {
+inline void set(colib::narray<T> &a, S v0, S v1) {
   a.resize(1);
   a(0) = v0;
   a(1) = v1;
 }
 
 template <class T, class S>
-inline void set(narray<T> &a, S v0, S v1, S v2) {
+inline void set(colib::narray<T> &a, S v0, S v1, S v2) {
   a.resize(3);
   a(0) = v0;
   a(1) = v1;
@@ -31,7 +30,7 @@ inline void set(narray<T> &a, S v0, S v1, S v2) {
 }
 
 template <class T, class S>
-inline void set(narray<T> &a, S v0, S v1, S v2, S v3) {
+inline void set(colib::narray<T> &a, S v0, S v1, S v2, S v3) {
   a.resize(4);
   a(0) = v0;
   a(1) = v1;
@@ -39,18 +38,18 @@ inline void set(narray<T> &a, S v0, S v1, S v2, S v3) {
   a(3) = v3;
 }
 
-inline vec2 normal(const vec2 &v) { return vec2(-v[1], v[0]); }
+inline colib::vec2 normal(const colib::vec2 &v) { return colib::vec2(-v[1], v[0]); }
 
-inline vec2 cmul(const vec2 &a, const vec2 &b) {
-  return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
+inline colib::vec2 cmul(const colib::vec2 &a, const colib::vec2 &b) {
+  return colib::vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
 }
 
-inline vec2 cdiv(const vec2 &a, const vec2 &b) {
-  double n = sqr(b[0]) + sqr(b[1]);
-  return vec2((a[0] * b[0] + a[1] * b[1]) / n, (a[1] * b[0] - a[0] * b[1]) / n);
+inline colib::vec2 cdiv(const colib::vec2 &a, const colib::vec2 &b) {
+  double n = colib::sqr(b[0]) + colib::sqr(b[1]);
+  return colib::vec2((a[0] * b[0] + a[1] * b[1]) / n, (a[1] * b[0] - a[0] * b[1]) / n);
 }
 
-inline float angleOf(const vec2 &v) { return atan2(v[1], v[0]); }
+inline float angleOf(const colib::vec2 &v) { return atan2(v[1], v[0]); }
 
 inline float normangleOf(float a) {
   while (a < 0) a += 2 * M_PI;
@@ -58,11 +57,11 @@ inline float normangleOf(float a) {
   return a;
 }
 
-inline float distance(const vec2 &a, const vec2 &b) {
+inline float distance(const colib::vec2 &a, const colib::vec2 &b) {
   return (a - b).magnitude();
 }
 
-inline float norm(vec2 &v) { return v.magnitude(); }
+inline float norm(colib::vec2 &v) { return v.magnitude(); }
 
 inline float normalize_orientation(float a) {
   while (a < 0) a += M_PI;
@@ -144,9 +143,9 @@ inline int clamp(int i, int n) {
   return i;
 }
 
-inline vec2 randomUniformVectorFromCircle(float epsilon) {
+inline colib::vec2 randomUniformVectorFromCircle(float epsilon) {
   for (;;) {
-    vec2 v(urand(-1.0, 1.0), urand(-1.0, 1.0));
+    colib::vec2 v(urand(-1.0, 1.0), urand(-1.0, 1.0));
     if (v.magnitude() < 1.0) return v * epsilon;
   }
 }
@@ -323,7 +322,7 @@ struct heap {
 
 template <class T>
 struct vector {
-  narray<T> v;
+  colib::narray<T> v;
   T &operator()(int i) { return v(i); }
   void set(T a) {
     v.resize(1);
@@ -354,12 +353,12 @@ struct vector {
     result(index) = value;
     return result;
   }
-  void copyfrom(vector<T> &source) { copy(v, source.v); }
+  void copyfrom(vector<T> &source) { colib::copy(v, source.v); }
   vector() {}
-  vector(const vector<T> &source) { copy(v, source.v); }
-  vector(vector<T> &source) { copy(v, source.v); }
-  void operator=(const vector<T> &source) { copy(v, source.v); }
-  void operator=(vector<T> &source) { copy(v, source.v); }
+  vector(const vector<T> &source) { colib::copy(v, source.v); }
+  vector(vector<T> &source) { colib::copy(v, source.v); }
+  void operator=(const vector<T> &source) { colib::copy(v, source.v); }
+  void operator=(vector<T> &source) { colib::copy(v, source.v); }
 };
 
 inline int mkseed() {
