@@ -7,7 +7,6 @@
 #include "narray.h"
 #include <string.h>
 
-
 template <class T, class S>
 inline void set(colib::narray<T> &a, S v0) {
   a.resize(1);
@@ -52,45 +51,48 @@ inline colib::vec2 cdiv(const colib::vec2 &a, const colib::vec2 &b) {
 inline float angleOf(const colib::vec2 &v) { return atan2(v[1], v[0]); }
 
 inline float normangleOf(float a) {
-  while (a < 0) a += 2 * M_PI;
-  while (a >= 2 * M_PI) a -= 2 * M_PI;
+  while (a < 0)
+    a += 2 * M_PI;
+  while (a >= 2 * M_PI)
+    a -= 2 * M_PI;
   return a;
 }
 
-inline float distance(const colib::vec2 &a, const colib::vec2 &b) {
-  return (a - b).magnitude();
-}
+inline float distance(const colib::vec2 &a, const colib::vec2 &b) { return (a - b).magnitude(); }
 
 inline float norm(colib::vec2 &v) { return v.magnitude(); }
 
 inline float normalize_orientation(float a) {
-  while (a < 0) a += M_PI;
-  while (a >= M_PI) a -= M_PI;
+  while (a < 0)
+    a += M_PI;
+  while (a >= M_PI)
+    a -= M_PI;
   return a;
 }
 
 inline float normalize_angle_centered(float a) {
-  while (a < -M_PI) a += 2 * M_PI;
-  while (a >= M_PI) a -= 2 * M_PI;
+  while (a < -M_PI)
+    a += 2 * M_PI;
+  while (a >= M_PI)
+    a -= 2 * M_PI;
   return a;
 }
 
-inline double urand(double low, double high) {
-  return drand48() * (high - low) + low;
-}
+inline double urand(double low, double high) { return drand48() * (high - low) + low; }
 
 inline int igetenv(const char *name, int dflt) {
   int result = getenv(name) ? atoi(getenv(name)) : dflt;
   int where = 0;
-  if (strcmp(name, "verbose_params")) where = igetenv("verbose_params", 0);
+  if (strcmp(name, "verbose_params"))
+    where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %d\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %d\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %d\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %d\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
@@ -98,13 +100,13 @@ inline float fgetenv(const char *name, float dflt) {
   float result = getenv(name) ? atof(getenv(name)) : dflt;
   int where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %g\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %g\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %g\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %g\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
@@ -112,13 +114,13 @@ inline double dgetenv(const char *name, double dflt) {
   double result = getenv(name) ? atof(getenv(name)) : dflt;
   int where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %g\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %g\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %g\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %g\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
@@ -126,27 +128,30 @@ inline const char *sgetenv(const char *name, const char *dflt) {
   const char *result = getenv(name) ? getenv(name) : dflt;
   int where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %s\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %s\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %s\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %s\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
 
 inline int clamp(int i, int n) {
-  if (i < 0) return 0;
-  if (i >= n) return n - 1;
+  if (i < 0)
+    return 0;
+  if (i >= n)
+    return n - 1;
   return i;
 }
 
 inline colib::vec2 randomUniformVectorFromCircle(float epsilon) {
   for (;;) {
     colib::vec2 v(urand(-1.0, 1.0), urand(-1.0, 1.0));
-    if (v.magnitude() < 1.0) return v * epsilon;
+    if (v.magnitude() < 1.0)
+      return v * epsilon;
   }
 }
 
@@ -363,7 +368,8 @@ struct vector {
 
 inline int mkseed() {
   int seed = igetenv("seed", -1);
-  if (seed != -1) return seed;
+  if (seed != -1)
+    return seed;
   return 0;
 }
 
@@ -375,4 +381,4 @@ inline double now() {
   return tv.tv_sec + 1e-6 * tv.tv_usec;
 }
 
-#endif  // RAST_SRC_UTIL_H_
+#endif // RAST_SRC_UTIL_H_

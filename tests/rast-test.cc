@@ -20,31 +20,31 @@ using namespace colib;
 #include "util.h"
 #include "rast.h"
 
-#define begin_trials(NAME, N, FREQ)                                      \
-  if (1) {                                                               \
-    const char *NAME__ = (NAME);                                         \
-    fprintf(stderr, "================ STARTING %s (%d)\n", NAME__, (N)); \
-    for (int TRIAL = 0; TRIAL < (N); TRIAL++) {                          \
-      try {                                                              \
-        if (FREQ > 0 && TRIAL > 0 && TRIAL % FREQ == 0)                  \
+#define begin_trials(NAME, N, FREQ)                                                                \
+  if (1) {                                                                                         \
+    const char *NAME__ = (NAME);                                                                   \
+    fprintf(stderr, "================ STARTING %s (%d)\n", NAME__, (N));                           \
+    for (int TRIAL = 0; TRIAL < (N); TRIAL++) {                                                    \
+      try {                                                                                        \
+        if (FREQ > 0 && TRIAL > 0 && TRIAL % FREQ == 0)                                            \
           fprintf(stderr, " %d", TRIAL);
 
-#define end_trials                                                            \
-  }                                                                           \
-  catch (const char *s) {                                                     \
-    fprintf(stderr, "\n%s: trial %d failed: %s\n", NAME__, TRIAL, s);         \
-  }                                                                           \
-  catch (...) {                                                               \
-    fprintf(stderr, "\n%s: trial %d failed with unknown exception\n", NAME__, \
-            TRIAL);                                                           \
-  }                                                                           \
-  }                                                                           \
-  fprintf(stderr, "\n================ FINISHED %s\n", NAME__);                \
+#define end_trials                                                                                 \
+  }                                                                                                \
+  catch (const char *s) {                                                                          \
+    fprintf(stderr, "\n%s: trial %d failed: %s\n", NAME__, TRIAL, s);                              \
+  }                                                                                                \
+  catch (...) {                                                                                    \
+    fprintf(stderr, "\n%s: trial %d failed with unknown exception\n", NAME__, TRIAL);              \
+  }                                                                                                \
+  }                                                                                                \
+  fprintf(stderr, "\n================ FINISHED %s\n", NAME__);                                     \
   }
 
-#define assert(X)                            \
-  do {                                       \
-    if (!(X)) throw "ASSERTION FAILED: " #X; \
+#define assert(X)                                                                                  \
+  do {                                                                                             \
+    if (!(X))                                                                                      \
+      throw "ASSERTION FAILED: " #X;                                                               \
   } while (0)
 
 struct Segment {
@@ -95,7 +95,8 @@ void test_linesp2d_1() {
       lines->add_ipoint(p[0], p[1], angle, 1.0);
     }
     lines->compute();
-    if (lines->nresults() < 1) throw "didn't get any results";
+    if (lines->nresults() < 1)
+      throw "didn't get any results";
     float loffset = lines->offset(0);
     float langle = lines->angle(0);
 
@@ -130,7 +131,8 @@ void test_liness2d_1() {
       lines->add_iseg(p[0], p[1], q[0], q[1], angle, 1.0);
     }
     lines->compute();
-    if (lines->nresults() < 1) throw "didn't get any results";
+    if (lines->nresults() < 1)
+      throw "didn't get any results";
     float loffset = lines->offset(0);
     float langle = lines->angle(0);
 
@@ -220,11 +222,10 @@ void test_rastp2d_2() {
     rast->match();
     assert(rast->nresults() > 0);
     if (0)
-      printf("*** %d: q=%g %g:%g %g %g %g   ---   %g %g %g %g\n", TRIAL,
-             rast->ubound(0), rast->lbound(0), rast->translation(0, 0),
-             rast->translation(0, 1), rast->angle(0), rast->scale(0),
-             instance->get_param(0), instance->get_param(1),
-             instance->get_param(2), instance->get_param(3));
+      printf("*** %d: q=%g %g:%g %g %g %g   ---   %g %g %g %g\n", TRIAL, rast->ubound(0),
+             rast->lbound(0), rast->translation(0, 0), rast->translation(0, 1), rast->angle(0),
+             rast->scale(0), instance->get_param(0), instance->get_param(1), instance->get_param(2),
+             instance->get_param(3));
     assert(within(rast->translation(0, 0), instance->get_param(0), 0.1));
     assert(within(rast->translation(0, 1), instance->get_param(1), 0.1));
     assert(within(rast->angle(0), instance->get_param(2), 0.05));
@@ -240,9 +241,7 @@ struct seg2 {
     this->u = u;
     this->v = v;
   }
-  seg2 transform(vec2 rot, vec2 tr) {
-    return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr);
-  }
+  seg2 transform(vec2 rot, vec2 tr) { return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr); }
   float angle() { return angleOf(v - u); }
   float length() { return (v - u).magnitude(); }
 };

@@ -85,11 +85,13 @@ struct autodel {
   T *data;
   autodel() { data = 0; }
   ~autodel() {
-    if (data) delete data;
+    if (data)
+      delete data;
   }
   autodel(T *other) { data = other; }
   void operator=(T *other) {
-    if (data) delete data;
+    if (data)
+      delete data;
     data = other;
   }
   T &operator*() { return *data; }
@@ -103,7 +105,8 @@ struct Stdio {
   Stdio() { stream = 0; }
   Stdio(const char *file, const char *mode) {
     stream = fopen(file, mode);
-    if (!stream) throw "open failed";
+    if (!stream)
+      throw "open failed";
   }
   ~Stdio() {
     if (stream) {
@@ -117,7 +120,8 @@ struct Stdio {
       stream = 0;
     }
     stream = fopen(file, mode);
-    if (!stream) throw "open failed";
+    if (!stream)
+      throw "open failed";
   }
   void close() {
     if (stream) {
@@ -131,7 +135,8 @@ struct Stdio {
       stream = 0;
     }
     stream = ::popen(file, mode);
-    if (!stream) throw "open failed";
+    if (!stream)
+      throw "open failed";
   }
   void pclose() {
     if (stream) {
@@ -141,9 +146,10 @@ struct Stdio {
   }
 };
 
-#define ASSERT(X)                            \
-  do {                                       \
-    if (!(X)) throw "ASSERTION FAILED: " #X; \
+#define ASSERT(X)                                                                                  \
+  do {                                                                                             \
+    if (!(X))                                                                                      \
+      throw "ASSERTION FAILED: " #X;                                                               \
   } while (0)
 #define RANGE(X, N) ASSERT(unsigned(X) < unsigned(N))
 
@@ -176,7 +182,8 @@ struct Array {
   }
 
   void operator=(T value) {
-    for (int i = 0; i < total; i++) data[i] = value;
+    for (int i = 0; i < total; i++)
+      data[i] = value;
   }
 
   void resize(int d0, int d1 = 1) {
@@ -193,11 +200,13 @@ struct Array {
   template <class S>
   void copy(Array<S> &other) {
     resize(other.dim(0), other.dim(1));
-    for (int i = 0, n = length(); i < n; i++) operator[](i) = other[i];
+    for (int i = 0, n = length(); i < n; i++)
+      operator[](i) = other[i];
   }
 
   void reshape(int d0, int d1 = 1) {
-    if (d0 * d1 != size) throw "incompatible reshape";
+    if (d0 * d1 != size)
+      throw "incompatible reshape";
     dims[0] = d0;
     dims[1] = d1;
   }
@@ -206,29 +215,34 @@ struct Array {
 
   T &operator()(int i0) {
 #ifndef UNSAFE
-    if (unsigned(i0) >= unsigned(dims[0])) throw "index error";
+    if (unsigned(i0) >= unsigned(dims[0]))
+      throw "index error";
 #endif
     return data[i0];
   }
 
   T &operator()(int i0, int i1) {
 #ifndef UNSAFE
-    if (unsigned(i0) >= unsigned(dims[0])) throw "index error";
-    if (unsigned(i1) >= unsigned(dims[1])) throw "index error";
+    if (unsigned(i0) >= unsigned(dims[0]))
+      throw "index error";
+    if (unsigned(i1) >= unsigned(dims[1]))
+      throw "index error";
 #endif
     return data[i1 + dims[1] * i0];
   }
 
   int length() const { return size; }
   T &operator[](int i0) const {
-    if (unsigned(i0) >= unsigned(size)) throw "index error";
+    if (unsigned(i0) >= unsigned(size))
+      throw "index error";
     return data[i0];
   }
   T &push() {
     if (size == total) {
       int ntotal = total * 2 + 1;
       T *ndata = new T[ntotal];
-      for (int i = 0; i < total; i++) ndata[i] = data[i];
+      for (int i = 0; i < total; i++)
+        ndata[i] = data[i];
       delete[] data;
       total = ntotal;
       data = ndata;
@@ -238,7 +252,8 @@ struct Array {
   void push(const T &obj) { push() = obj; }
   void push(T &obj) { push() = obj; }
   T &pop() {
-    if (size < 1) throw "index error (pop)";
+    if (size < 1)
+      throw "index error (pop)";
     return data[--size];
   }
   void clear() { size = 0; }
@@ -272,7 +287,7 @@ struct Array {
     }
   }
 
- private:
+private:
   Array(Array<T> &);
   void operator=(Array<T> &);
 };
@@ -286,7 +301,8 @@ T min(Array<T> &data) {
   T result = data[0];
   for (int i = 1, n = data.length(); i < n; i++) {
     T value = data[i];
-    if (value < result) result = value;
+    if (value < result)
+      result = value;
   }
   return result;
 }
@@ -296,7 +312,8 @@ T max(Array<T> &data) {
   T result = data[0];
   for (int i = 1, n = data.length(); i < n; i++) {
     T value = data[i];
-    if (value > result) result = value;
+    if (value > result)
+      result = value;
   }
   return result;
 }
@@ -305,7 +322,8 @@ template <class T>
 int count(Array<T> &data) {
   int total = 0;
   for (int i = 0, n = data.length(); i < n; i++) {
-    if (data[i]) total++;
+    if (data[i])
+      total++;
   }
   return total;
 }
@@ -345,21 +363,11 @@ struct vec2 {
     RANGE(i, N);
     return data[i];
   }
-  vec2 operator+(const vec2 &other) const {
-    return vec2(at(0) + other(0), at(1) + other(1));
-  }
-  vec2 operator-(const vec2 &other) const {
-    return vec2(at(0) - other(0), at(1) - other(1));
-  }
-  float operator*(const vec2 &other) const {
-    return at(0) * other(0) + at(1) * other(1);
-  }
-  vec2 operator*(float scale) const {
-    return vec2(at(0) * scale, at(1) * scale);
-  }
-  vec2 operator/(float scale) const {
-    return vec2(at(0) / scale, at(1) / scale);
-  }
+  vec2 operator+(const vec2 &other) const { return vec2(at(0) + other(0), at(1) + other(1)); }
+  vec2 operator-(const vec2 &other) const { return vec2(at(0) - other(0), at(1) - other(1)); }
+  float operator*(const vec2 &other) const { return at(0) * other(0) + at(1) * other(1); }
+  vec2 operator*(float scale) const { return vec2(at(0) * scale, at(1) * scale); }
+  vec2 operator/(float scale) const { return vec2(at(0) / scale, at(1) / scale); }
   float magnitude() const { return sqrt(sqr(data[0]) + sqr(data[1])); }
   float angle() const { return atan2(data[1], data[0]); }
   float magnitude_squared() const { return sqr(data[0]) + sqr(data[1]); }
@@ -376,8 +384,7 @@ struct vec2 {
   inline vec2 cdiv(const vec2 &b) const {
     const vec2 &a = *this;
     double n = sqr(b[0]) + sqr(b[1]);
-    return vec2((a[0] * b[0] + a[1] * b[1]) / n,
-                (a[1] * b[0] - a[0] * b[1]) / n);
+    return vec2((a[0] * b[0] + a[1] * b[1]) / n, (a[1] * b[0] - a[0] * b[1]) / n);
   }
 };
 
@@ -402,13 +409,15 @@ static int scanint(FILE *file) {
 
 static int getbyte(FILE *file) {
   int value = getc(file);
-  if (value == -1) throw "read_pnm: image short";
+  if (value == -1)
+    throw "read_pnm: image short";
   return value;
 }
 
 static void read_pnm(ByteArray &image, FILE *file) {
   char cp = getc(file);
-  if (cp != 'P') throw "read_pnm: unknown foramt";
+  if (cp != 'P')
+    throw "read_pnm: unknown foramt";
   int ctype = getc(file) - '0';
   if (ctype != 2 && ctype != 3 && ctype != 5 && ctype != 6)
     throw "read_pnm: cannot handle this type";
@@ -416,21 +425,25 @@ static void read_pnm(ByteArray &image, FILE *file) {
   int nparams = 0;
   while (nparams < 3) {
     int c = getc(file);
-    if (c < 0) throw "read_pnm: unexpected eof";
+    if (c < 0)
+      throw "read_pnm: unexpected eof";
     if (isdigit(c)) {
       ungetc(c, file);
       if (fscanf(file, "%d", &params[nparams]) != 1)
         throw "read_pnm: bad number format";
       nparams++;
       c = getc(file);
-      if (!isspace(c)) throw "read_pnm: bad header format";
+      if (!isspace(c))
+        throw "read_pnm: bad header format";
       continue;
     }
     if (c == '#') {
       for (;;) {
         c = getc(file);
-        if (c == '\n') break;
-        if (c == -1) throw "read_pnm: unexpected eof";
+        if (c == '\n')
+          break;
+        if (c == -1)
+          throw "read_pnm: unexpected eof";
       }
     }
   }
@@ -439,20 +452,20 @@ static void read_pnm(ByteArray &image, FILE *file) {
     for (int i = 0; i < image.dim(0); i++) {
       int value;
       switch (ctype) {
-        case 2:
-          value = scanint(file);
-          break;
-        case 3:
-          value = (scanint(file) + scanint(file) + scanint(file)) / 3;
-          break;
-        case 5:
-          value = getbyte(file);
-          break;
-        case 6:
-          value = (getbyte(file) + getbyte(file) + getbyte(file)) / 3;
-          break;
-        default:
-          throw "bad type";
+      case 2:
+        value = scanint(file);
+        break;
+      case 3:
+        value = (scanint(file) + scanint(file) + scanint(file)) / 3;
+        break;
+      case 5:
+        value = getbyte(file);
+        break;
+      case 6:
+        value = (getbyte(file) + getbyte(file) + getbyte(file)) / 3;
+        break;
+      default:
+        throw "bad type";
       }
       image(i, j) = value;
     }
@@ -496,12 +509,15 @@ struct scaled_array {
       minv = min(image);
       maxv = max(image);
     }
-    if (maxv == minv) maxv = minv + 1.0;
+    if (maxv == minv)
+      maxv = minv + 1.0;
     float scale = 256.0 * maxv - minv;
     for (int i = 0; i < n; i++) {
       int value = int(scale * (image[i] - minv));
-      if (value < 0) value = 0;
-      if (value > 255) value = 255;
+      if (value < 0)
+        value = 0;
+      if (value > 255)
+        value = 255;
       data[i] = value;
     }
   }
@@ -518,8 +534,10 @@ static void gauss1d(FloatArray &out, FloatArray &in, float sigma) {
     mask(range + i) = mask(range - i) = y;
   }
   float total = 0.0;
-  for (int i = 0; i < mask.length(); i++) total += mask[i];
-  for (int i = 0; i < mask.length(); i++) mask[i] /= total;
+  for (int i = 0; i < mask.length(); i++)
+    total += mask[i];
+  for (int i = 0; i < mask.length(); i++)
+    mask[i] /= total;
 
   // apply it
   int n = in.length();
@@ -527,9 +545,11 @@ static void gauss1d(FloatArray &out, FloatArray &in, float sigma) {
     double total = 0.0;
     for (int j = 0; j < mask.length(); j++) {
       int index = i + j - range;
-      if (index < 0) index = 0;
-      if (index >= n) index = n - 1;
-      total += in[index] * mask[j];  // it's symmetric
+      if (index < 0)
+        index = 0;
+      if (index >= n)
+        index = n - 1;
+      total += in[index] * mask[j]; // it's symmetric
     }
     out[i] = total;
   }
@@ -554,8 +574,7 @@ inline T isign(T x) {
   return ((x) >= 0 ? 1 : -1);
 }
 
-static void nonmaxsup(ByteArray &out, FloatArray &gradm, FloatArray &gradx,
-                      FloatArray &grady) {
+static void nonmaxsup(ByteArray &out, FloatArray &gradm, FloatArray &gradx, FloatArray &grady) {
   int w = gradm.dim(0), h = gradm.dim(1);
   out.resize(w, h);
   out = 0;
@@ -580,34 +599,42 @@ static void nonmaxsup(ByteArray &out, FloatArray &gradm, FloatArray &gradx,
       float c = gradm(i, j);
       float u = gradm(i - ax, j - ay);
       float d = gradm(i - bx, j - by);
-      if (vy * c <= (vx * d + (vy - vx) * u)) continue;
+      if (vy * c <= (vx * d + (vy - vx) * u))
+        continue;
       u = gradm(i + ax, j + ay);
       d = gradm(i + bx, j + by);
-      if (vy * c < (vx * d + (vy - vx) * u)) continue;
+      if (vy * c < (vx * d + (vy - vx) * u))
+        continue;
       out(i, j) = 255;
     }
   }
 }
 
-static float masked_fractile(FloatArray &gradm, const ByteArray &mask,
-                             float frac, int bins = 1000) {
+static float masked_fractile(FloatArray &gradm, const ByteArray &mask, float frac,
+                             int bins = 1000) {
   bool use_mask = mask.length() > 0;
   IntArray hist(bins);
   hist = 0;
   float minv = 1e30, maxv = -1e30;
   int count = 0;
   for (int i = 0, n = gradm.length(); i < n; i++) {
-    if (use_mask && !mask[i]) continue;
+    if (use_mask && !mask[i])
+      continue;
     count++;
-    if (maxv < gradm[i]) maxv = gradm[i];
-    if (minv > gradm[i]) minv = gradm[i];
+    if (maxv < gradm[i])
+      maxv = gradm[i];
+    if (minv > gradm[i])
+      minv = gradm[i];
   }
-  if (count < 2) return minv;
-  if (maxv == minv) return minv;
+  if (count < 2)
+    return minv;
+  if (maxv == minv)
+    return minv;
   int limit = int(frac * count);
   float scale = bins / (maxv - minv);
   for (int i = 0, n = gradm.length(); i < n; i++) {
-    if (use_mask && !mask[i]) continue;
+    if (use_mask && !mask[i])
+      continue;
     int bin = int(scale * (gradm[i] - minv));
     hist[min(bins - 1, bin)]++;
   }
@@ -620,12 +647,18 @@ static float masked_fractile(FloatArray &gradm, const ByteArray &mask,
 
 static void masked_fill(ByteArray &in, ByteArray &out, int x, int y) {
   int w = in.dim(0), h = in.dim(1);
-  if (x < 0) return;
-  if (x >= w) return;
-  if (y < 0) return;
-  if (y >= h) return;
-  if (!in(x, y)) return;
-  if (out(x, y)) return;
+  if (x < 0)
+    return;
+  if (x >= w)
+    return;
+  if (y < 0)
+    return;
+  if (y >= h)
+    return;
+  if (!in(x, y))
+    return;
+  if (out(x, y))
+    return;
   out(x, y) = 1;
   masked_fill(in, out, x + 1, y);
   masked_fill(in, out, x, y + 1);
@@ -637,8 +670,8 @@ static void masked_fill(ByteArray &in, ByteArray &out, int x, int y) {
   masked_fill(in, out, x + 1, y - 1);
 }
 
-static void hysteresis_thresholding(ByteArray &out, FloatArray &gradm,
-                                    ByteArray &mask, float tlow, float thigh) {
+static void hysteresis_thresholding(ByteArray &out, FloatArray &gradm, ByteArray &mask, float tlow,
+                                    float thigh) {
   int w = gradm.dim(0), h = gradm.dim(1);
   ByteArray low(w, h);
   low = 0;
@@ -646,12 +679,15 @@ static void hysteresis_thresholding(ByteArray &out, FloatArray &gradm,
   out = 0;
   for (int i = 0; i < w; i++)
     for (int j = 0; j < h; j++) {
-      if (mask.dim(0) > 0 && !mask(i, j)) continue;
-      if (gradm(i, j) > tlow) low(i, j) = 1;
+      if (mask.dim(0) > 0 && !mask(i, j))
+        continue;
+      if (gradm(i, j) > tlow)
+        low(i, j) = 1;
     }
   for (int i = 0; i < w; i++)
     for (int j = 0; j < h; j++) {
-      if (gradm(i, j) > thigh) masked_fill(low, out, i, j);
+      if (gradm(i, j) > thigh)
+        masked_fill(low, out, i, j);
     }
 }
 
@@ -696,8 +732,10 @@ static void thin(ByteArray &uci) {
     for (int j = 0; j < 8; j += 2) {
       for (int x = 1; x < w; x++)
         for (int y = 1; y < h; y++) {
-          if (uci(x, y) != ON) continue;
-          if (uci(x + nx[j], y + ny[j]) != OFF) continue;
+          if (uci(x, y) != ON)
+            continue;
+          if (uci(x + nx[j], y + ny[j]) != OFF)
+            continue;
           int b = 0;
           for (int i = 7; i >= 0; i--) {
             b <<= 1;
@@ -710,10 +748,12 @@ static void thin(ByteArray &uci) {
             flag = 1;
           }
         }
-      if (!flag) continue;
+      if (!flag)
+        continue;
       for (int x = 1; x < w; x++)
         for (int y = 1; y < h; y++)
-          if (uci(x, y) == DEL) uci(x, y) = OFF;
+          if (uci(x, y) == DEL)
+            uci(x, y) = OFF;
     }
   } while (flag);
 
@@ -730,14 +770,14 @@ inline float point_line_dist(vec2 p, vec2 a, vec2 b) {
   float mag = delta.magnitude();
   // if the distance is small, just return the point distance;
   // that's the right thing for approx_chain
-  if (mag < 1e-4) return a.distance(p);
+  if (mag < 1e-4)
+    return a.distance(p);
   vec2 normal = delta.normal() / mag;
   float offset = normal * a;
   return fabs(normal * p - offset);
 }
 
-static void approx_chain(IntArray &breaks, Vec2Array &chain, int i0, int i1,
-                         float maxdist) {
+static void approx_chain(IntArray &breaks, Vec2Array &chain, int i0, int i1, float maxdist) {
   float md = 0.0;
   int mi = -1;
   vec2 a = chain[i0];
@@ -745,12 +785,14 @@ static void approx_chain(IntArray &breaks, Vec2Array &chain, int i0, int i1,
   for (int i = i0; i <= i1; i++) {
     float d = point_line_dist(chain[i], a, b);
     // printf("%d %g %g %g\n",i,d,a.distance(chain[i]),b.distance(chain[i]));
-    if (d <= md) continue;
+    if (d <= md)
+      continue;
     md = d;
     mi = i;
   }
   // printf("i0 %d i1 %d mi %d md %g maxdist %g\n",i0,i1,mi,md,maxdist);
-  if (md < maxdist) return;
+  if (md < maxdist)
+    return;
   ASSERT(mi != i0 && mi != i1);
   approx_chain(breaks, chain, i0, mi, maxdist);
   breaks.push(mi);
@@ -767,14 +809,22 @@ struct ChainTracer {
 
   int count_neighbors() {
     int nn = 0;
-    if (bi(x + 1, y)) nn++;
-    if (bi(x + 1, y + 1)) nn++;
-    if (bi(x, y + 1)) nn++;
-    if (bi(x - 1, y + 1)) nn++;
-    if (bi(x - 1, y)) nn++;
-    if (bi(x - 1, y - 1)) nn++;
-    if (bi(x, y - 1)) nn++;
-    if (bi(x + 1, y - 1)) nn++;
+    if (bi(x + 1, y))
+      nn++;
+    if (bi(x + 1, y + 1))
+      nn++;
+    if (bi(x, y + 1))
+      nn++;
+    if (bi(x - 1, y + 1))
+      nn++;
+    if (bi(x - 1, y))
+      nn++;
+    if (bi(x - 1, y - 1))
+      nn++;
+    if (bi(x, y - 1))
+      nn++;
+    if (bi(x + 1, y - 1))
+      nn++;
     return nn;
   }
 
@@ -825,8 +875,10 @@ struct ChainTracer {
   bool nextstart() {
     for (; sx < w; sx++)
       for (sy = 0; sy < h; sy++) {
-        if (!bi(sx, sy)) continue;
-        if (bi(sx, sy) == DONE) continue;
+        if (!bi(sx, sy))
+          continue;
+        if (bi(sx, sy) == DONE)
+          continue;
         x = sx;
         y = sy;
         return true;
@@ -842,16 +894,20 @@ struct ChainTracer {
     sx = 0;
     sy = 0;
     bi.resize(w, h);
-    for (int i = 0, n = image.length(); i < n; i++) bi[i] = image[i] ? ON : OFF;
-    for (int i = 0; i < w; i++) bi(i, 0) = bi(i, h - 1) = OFF;
-    for (int j = 0; j < h; j++) bi(0, j) = bi(w - 1, j) = OFF;
+    for (int i = 0, n = image.length(); i < n; i++)
+      bi[i] = image[i] ? ON : OFF;
+    for (int i = 0; i < w; i++)
+      bi(i, 0) = bi(i, h - 1) = OFF;
+    for (int j = 0; j < h; j++)
+      bi(0, j) = bi(w - 1, j) = OFF;
     w--;
     h--;
   }
 
   bool get_chain(Vec2Array &points, bool close = false) {
     points.clear();
-    if (!nextstart()) return false;
+    if (!nextstart())
+      return false;
     do {
       points.push() = vec2(x, y);
       bi(x, y) = DONE;
@@ -879,14 +935,17 @@ struct ChainTracer {
   bool get_poly(Vec2Array &poly, float maxdist = 1.0, bool close = false) {
     poly.clear();
     breaks.clear();
-    if (!get_chain(chain, close)) return false;
+    if (!get_chain(chain, close))
+      return false;
     if (chain.length() < 3) {
-      for (int i = 0; i < chain.length(); i++) poly.push(chain[i]);
+      for (int i = 0; i < chain.length(); i++)
+        poly.push(chain[i]);
     } else {
       breaks.push(0);
       approx_chain(breaks, chain, 0, chain.length() - 1, maxdist);
       breaks.push(chain.length() - 1);
-      for (int i = 0; i < breaks.length(); i++) poly.push(chain[breaks[i]]);
+      for (int i = 0; i < breaks.length(); i++)
+        poly.push(chain[breaks[i]]);
     }
     return true;
   }
@@ -971,12 +1030,14 @@ struct CEdges : EdgeDetector {
   int dim(int i) { return image.dim(i); }
   void set_image(unsigned char *p, int w, int h) {
     image.resize(w, h);
-    for (int i = 0; i < image.length(); i++) image[i] = p[i];
+    for (int i = 0; i < image.length(); i++)
+      image[i] = p[i];
   }
   void set_pixmap(unsigned char *p, int w, int h) {
     image.resize(w, h);
     for (int y = h - 1; y >= 0; y--)
-      for (int x = 0; x < w; x++) image(x, y) = *p++;
+      for (int x = 0; x < w; x++)
+        image(x, y) = *p++;
   }
   void compute() {
     int w = image.dim(0);
@@ -1004,7 +1065,8 @@ struct CEdges : EdgeDetector {
     nonmaxsup(uedges, gradm, gradx, grady);
 
     for (int i = 0, n = uedges.length(); i < n; i++)
-      if (uedges[i]) uedges[i] = 255;
+      if (uedges[i])
+        uedges[i] = 255;
     thin(uedges);
 
     ByteArray temp(0, 0);
@@ -1012,20 +1074,23 @@ struct CEdges : EdgeDetector {
     float low = p_tlow * noise;
     float high = p_thigh * noise;
     hysteresis_thresholding(edges, gradm, uedges, low, high);
-    for (int i = 0; i < edges.length(); i++) edges[i] = 255 * !!edges[i];
+    for (int i = 0; i < edges.length(); i++)
+      edges[i] = 255 * !!edges[i];
 
     tracer.set_image(edges);
   }
   void get_eimage(unsigned char *p, int w, int h) {
     if (edges.dim(0) != w || edges.dim(1) != h)
       throw "output image has the wrong size";
-    for (int i = 0; i < edges.length(); i++) p[i] = edges[i];
+    for (int i = 0; i < edges.length(); i++)
+      p[i] = edges[i];
   }
   void get_epixmap(unsigned char *image, int w, int h) {
     if (edges.dim(0) != w || edges.dim(1) != h)
       throw "output image has the wrong size";
     for (int y = h - 1; y >= 0; y--)
-      for (int x = 0; x < w; x++) *image++ = edges(x, y);
+      for (int x = 0; x < w; x++)
+        *image++ = edges(x, y);
   }
   float gradient_magnitude(int x, int y) { return gradm(x, y); }
   float gradient_angle(int x, int y) { return atan2(grady(x, y), gradx(x, y)); }
@@ -1034,7 +1099,8 @@ struct CEdges : EdgeDetector {
   IntArray breaks;
 
   bool nextchain() {
-    if (!tracer.get_chain(chain)) return false;
+    if (!tracer.get_chain(chain))
+      return false;
     breaks.clear();
     breaks.push(0);
     approx_chain(breaks, chain, 0, chain.length() - 1, p_maxdist);
@@ -1047,8 +1113,8 @@ struct CEdges : EdgeDetector {
     y = chain[index][1];
   }
   int nsegments() { return breaks.length() - 1; }
-  void segment(int i, float &x0, float &y0, float &x1, float &y1, float &angle,
-               float &magnitude, int &n) {
+  void segment(int i, float &x0, float &y0, float &x1, float &y1, float &angle, float &magnitude,
+               int &n) {
     i++;
     int i0 = breaks[i - 1];
     int i1 = breaks[i];
@@ -1067,7 +1133,8 @@ struct CEdges : EdgeDetector {
     y1 = b[1];
     magnitude = g.magnitude();
     angle = g.angle();
-    while (angle < 0) angle += 2 * M_PI;
+    while (angle < 0)
+      angle += 2 * M_PI;
     n = i1 - i0 + 1;
   }
   struct Sample {
@@ -1102,8 +1169,7 @@ struct CEdges : EdgeDetector {
     }
   }
   int nsamples() { return samples.length(); }
-  void sample(int i, float &x, float &y, float &angle, float &mag,
-              int &npoints) {
+  void sample(int i, float &x, float &y, float &angle, float &mag, int &npoints) {
     Sample &s = samples(i);
     x = s.c(0);
     y = s.c(1);
@@ -1114,7 +1180,7 @@ struct CEdges : EdgeDetector {
 };
 
 EdgeDetector *makeEdgeDetector() { return new CEdges(); }
-}
+} // namespace iupr_cedges
 
 #ifdef MAIN
 
@@ -1122,15 +1188,16 @@ namespace iupr_cedges {
 inline int igetenv(const char *name, int dflt) {
   int result = getenv(name) ? atoi(getenv(name)) : dflt;
   int where = 0;
-  if (strcmp(name, "verbose_params")) where = igetenv("verbose_params", 0);
+  if (strcmp(name, "verbose_params"))
+    where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %d\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %d\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %d\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %d\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
@@ -1138,13 +1205,13 @@ inline float fgetenv(const char *name, float dflt) {
   float result = getenv(name) ? atof(getenv(name)) : dflt;
   int where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %g\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %g\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %g\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %g\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
@@ -1152,13 +1219,13 @@ inline double dgetenv(const char *name, double dflt) {
   double result = getenv(name) ? atof(getenv(name)) : dflt;
   int where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %g\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %g\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %g\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %g\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
@@ -1166,51 +1233,48 @@ inline const char *sgetenv(const char *name, const char *dflt) {
   const char *result = getenv(name) ? getenv(name) : dflt;
   int where = igetenv("verbose_params", 0);
   switch (where) {
-    case 1:
-      fprintf(stdout, "__param__ %s = %s\n", name, result);
-      break;
-    case 2:
-      fprintf(stderr, "__param__ %s = %s\n", name, result);
-      break;
-    default:;
+  case 1:
+    fprintf(stdout, "__param__ %s = %s\n", name, result);
+    break;
+  case 2:
+    fprintf(stderr, "__param__ %s = %s\n", name, result);
+    break;
+  default:;
   }
   return result;
 }
 
-const char *usage =
-    "Usage:\n"
-    "   cedges < input > output\n"
-    "\n"
-    "Input image must be in .pgm or .ppm format\n"
-    "\n"
-    "Parameters (via environment):\n"
-    "   esx,esy    3.0       Gaussian sigma\n"
-    "   efrac      0.3       Canny fraction\n"
-    "   elow       2.0       Canny low threshold\n"
-    "   ehigh      4.0       Canny high threshold\n"
-    "   eminlength 5.0       min length of segment in polygonal approximation\n"
-    "   emaxdist   1.5       max deviation in polygonal approximation\n"
-    "   espacing   4         interval at which edges are sampled\n"
-    "   eformat    segments  segments: output line segments\n"
-    "                        sampled: output edge samples\n"
-    "                        poly: output polygons\n"
-    "                        chain: output chains of edge pixels\n"
-    "                        map: output edge map in PBM format\n";
-}
+const char *usage = "Usage:\n"
+                    "   cedges < input > output\n"
+                    "\n"
+                    "Input image must be in .pgm or .ppm format\n"
+                    "\n"
+                    "Parameters (via environment):\n"
+                    "   esx,esy    3.0       Gaussian sigma\n"
+                    "   efrac      0.3       Canny fraction\n"
+                    "   elow       2.0       Canny low threshold\n"
+                    "   ehigh      4.0       Canny high threshold\n"
+                    "   eminlength 5.0       min length of segment in polygonal approximation\n"
+                    "   emaxdist   1.5       max deviation in polygonal approximation\n"
+                    "   espacing   4         interval at which edges are sampled\n"
+                    "   eformat    segments  segments: output line segments\n"
+                    "                        sampled: output edge samples\n"
+                    "                        poly: output polygons\n"
+                    "                        chain: output chains of edge pixels\n"
+                    "                        map: output edge map in PBM format\n";
+} // namespace iupr_cedges
 
 int main(int argc, char **argv) {
   using namespace iupr_cedges;
   autodel<CEdges> cedges = new CEdges();
   cedges->set_gauss(fgetenv("esx", 3.0), fgetenv("esy", 3.0));
-  cedges->set_noise(fgetenv("efrac", 0.3), fgetenv("elow", 2.0),
-                    fgetenv("ehigh", 4.0));
+  cedges->set_noise(fgetenv("efrac", 0.3), fgetenv("elow", 2.0), fgetenv("ehigh", 4.0));
   float eminlength = fgetenv("eminlength", 5.0);
   cedges->set_poly(eminlength, fgetenv("emaxdist", 1.5));
   const char *p_format = sgetenv("eformat", "segments");
   int p_spacing = igetenv("espacing", 4);
 
-  if (argc > 2 ||
-      (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-?"))) ||
+  if (argc > 2 || (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-?"))) ||
       (argc == 1 && isatty(0))) {
     fprintf(stderr, "%s", usage);
     exit(1);
@@ -1250,7 +1314,8 @@ int main(int argc, char **argv) {
         float x, y, x1, y1, a, w;
         int n;
         cedges->segment(i, x, y, x1, y1, a, w, n);
-        if (i == 0) printf("%g %g\n", x, y);
+        if (i == 0)
+          printf("%g %g\n", x, y);
         printf("%g %g\n", x1, y1);
       }
       printf("\n");
@@ -1262,11 +1327,13 @@ int main(int argc, char **argv) {
         float x, y, x1, y1, a, w;
         int n;
         cedges->segment(i, x, y, x1, y1, a, w, n);
-        if (sqrt(sqr(x1 - x) + sqr(y1 - y)) < eminlength) continue;
+        if (sqrt(sqr(x1 - x) + sqr(y1 - y)) < eminlength)
+          continue;
         printf("%g %g %g %g  %g %g %d\n", x, y, x1, y1, a, w, n);
         count++;
       }
-      if (count > 0) printf("\n");
+      if (count > 0)
+        printf("\n");
     }
   } else if (!strcmp(p_format, "sampled")) {
     while (cedges->nextchain()) {

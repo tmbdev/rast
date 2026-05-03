@@ -23,7 +23,7 @@ struct Trie1 {
     float x;
   };
   float eps;
-  colib::narray<colib::narray<Item *> > buckets;
+  colib::narray<colib::narray<Item *>> buckets;
   void init(float eps, int w) {
     this->eps = eps;
     buckets.resize(int(w / eps) + 1);
@@ -35,9 +35,8 @@ struct Trie1 {
     item.key = key;
   }
   void query(colib::narray<T> &keys, float x0, float x1) {
-    for (int i = clamp(x0 / eps, buckets.dim(0)),
-             n = clamp(x1 / eps, buckets.dim(0));
-         i <= n; i++) {
+    for (int i = clamp(x0 / eps, buckets.dim(0)), n = clamp(x1 / eps, buckets.dim(0)); i <= n;
+         i++) {
       for (int k = 0, r = buckets(i).length(); k < r; k++) {
         Item &item = buckets(i)[k];
         if (item.x >= x0 && item.x < x1) {
@@ -55,7 +54,7 @@ struct Trie2 {
     float x, y;
   };
   float eps;
-  colib::narray<colib::narray<Item> > buckets;
+  colib::narray<colib::narray<Item>> buckets;
   int xoffset, yoffset;
   void init(float eps, int xmax, int ymax, int xmin = 0, int ymin = 0) {
     int w = xmax - xmin;
@@ -80,11 +79,9 @@ struct Trie2 {
     y0 -= yoffset;
     x1 -= xoffset;
     y1 -= yoffset;
-    for (int i = clamp(int(x0 / eps), buckets.dim(0)),
-             n = clamp(int(x1 / eps), buckets.dim(0));
+    for (int i = clamp(int(x0 / eps), buckets.dim(0)), n = clamp(int(x1 / eps), buckets.dim(0));
          i <= n; i++) {
-      for (int j = clamp(int(y0 / eps), buckets.dim(1)),
-               m = clamp(int(y1 / eps), buckets.dim(1));
+      for (int j = clamp(int(y0 / eps), buckets.dim(1)), m = clamp(int(y1 / eps), buckets.dim(1));
            j <= m; j++) {
         for (int k = 0, r = buckets(i, j).length(); k < r; k++) {
           Item &item = buckets(i, j)[k];
@@ -97,4 +94,4 @@ struct Trie2 {
   }
 };
 
-#endif  // RAST_SRC_TRIE_H_
+#endif // RAST_SRC_TRIE_H_

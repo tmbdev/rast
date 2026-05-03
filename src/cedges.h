@@ -24,12 +24,12 @@ struct EdgeDetector {
   virtual int npoints() = 0;
   virtual void point(int index, float &x, float &y) = 0;
   virtual int nsegments() = 0;
-  virtual void segment(int i, float &x0, float &y0, float &x1, float &y1,
-                       float &angle, float &magnitude, int &n) = 0;
+  virtual void segment(int i, float &x0, float &y0, float &x1, float &y1, float &angle,
+                       float &magnitude, int &n) = 0;
   virtual ~EdgeDetector() {}
 };
 
 EdgeDetector *makeEdgeDetector();
-}  // namespace iupr_cedges
+} // namespace iupr_cedges
 
-#endif  // RAST_SRC_CEDGES_H_
+#endif // RAST_SRC_CEDGES_H_

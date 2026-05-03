@@ -1,0 +1,63 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+ColumnLimit: 100
+
+# Indentation
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ContinuationIndentWidth: 4
+AccessModifierOffset: -2
+NamespaceIndentation: None
+
+# Braces — K&R / attached
+BreakBeforeBraces: Attach
+
+# Pointers and references attach to the name (right alignment)
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+
+# Short forms permitted on a single line (matches house style)
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+# Constructor initializer lists kept on one line when they fit
+PackConstructorInitializers: CurrentLine
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerIndentWidth: 4
+
+# Spacing
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeRangeBasedForLoopColon: true
+
+# Includes
+# NOTE: SortIncludes is disabled because the vendored colib headers are not
+# self-contained — alphabetical sorting reorders narray-util.h before narray.h
+# and colib/misc.h before <stdio.h>, both of which break compilation. Re-enable
+# (CaseSensitive) once colib is replaced with std equivalents (F1).
+IncludeBlocks: Preserve
+SortIncludes: Never
+
+# Templates
+AlwaysBreakTemplateDeclarations: Yes
+
+# Misc
+AlignAfterOpenBracket: Align
+BinPackArguments: true
+BinPackParameters: true
+FixNamespaceComments: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+ReflowComments: true

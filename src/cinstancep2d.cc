@@ -54,16 +54,16 @@ struct CInstanceP2D : InstanceP2D {
   float scale;
   float get_param(int i) {
     switch (i) {
-      case 0:
-        return translation[0];
-      case 1:
-        return translation[1];
-      case 2:
-        return angle;
-      case 3:
-        return scale;
-      default:
-        throw "parameter index out of range";
+    case 0:
+      return translation[0];
+    case 1:
+      return translation[1];
+    case 2:
+      return angle;
+    case 3:
+      return scale;
+    default:
+      throw "parameter index out of range";
     }
   }
   narray<Msource> msources;
@@ -92,14 +92,12 @@ struct CInstanceP2D : InstanceP2D {
     ipoints.clear();
     for (int i = 0; i < nmodel_total; i++) {
       Msource &m = msources.push();
-      m.p =
-          vec2(urand(-model_size, model_size), urand(-model_size, model_size));
+      m.p = vec2(urand(-model_size, model_size), urand(-model_size, model_size));
       m.a = urand(0.0, 2 * M_PI);
     }
     for (int i = 0; i < nmodel_unoccluded; i++) {
       Ipoint &p = ipoints.push();
-      p.p = cmul(rotation, msources[i].p) + translation +
-            randomUniformVectorFromCircle(error);
+      p.p = cmul(rotation, msources[i].p) + translation + randomUniformVectorFromCircle(error);
       p.a = msources[i].a + angle + urand(-aerror, aerror);
     }
     shuffle(msources);
@@ -137,6 +135,6 @@ struct CInstanceP2D : InstanceP2D {
 
   ~CInstanceP2D() {}
 };
-}
+} // namespace lumo_cinstancep2d
 
 InstanceP2D *makeInstanceP2D() { return new lumo_cinstancep2d::CInstanceP2D(); }

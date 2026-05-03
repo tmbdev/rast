@@ -54,8 +54,7 @@ struct LinesS2D {
 
   // image points
   virtual void clear_ipoints() = 0;
-  virtual void add_iseg(float x, float y, float x1, float y1, float a,
-                        float w = 1.0) = 0;
+  virtual void add_iseg(float x, float y, float x1, float y1, float a, float w = 1.0) = 0;
 
   // compute matches
   virtual void compute() = 0;
@@ -82,7 +81,7 @@ struct InstanceP2D {
   virtual void set_nmodel_unoccluded(int v) = 0;
   virtual void set_error(float v) = 0;
   virtual void set_aerror(float v) = 0;
-  virtual void set_srange(float min, float max) = 0;  // range of scales
+  virtual void set_srange(float min, float max) = 0; // range of scales
 
   // generate instance
   virtual void generate() = 0;
@@ -111,15 +110,14 @@ struct RastP2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0;  // range of angles
-  virtual void set_srange(float s0, float s1) = 0;  // range of scales
+  virtual void set_arange(float a0, float a1) = 0; // range of angles
+  virtual void set_srange(float s0, float s1) = 0; // range of scales
   virtual void set_lsq(bool value) = 0;
   virtual void set_unoriented(bool value) = 0;
 
   // set model points
   virtual void clear_msources() = 0;
-  virtual void add_msource(float x, float y, float a, float eps,
-                           float aeps) = 0;
+  virtual void add_msource(float x, float y, float a, float eps, float aeps) = 0;
 
   // set image points
   virtual void clear_ipoints() = 0;
@@ -155,8 +153,8 @@ struct RastS2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0;  // range of angles
-  virtual void set_srange(float s0, float s1) = 0;  // range of scales
+  virtual void set_arange(float a0, float a1) = 0; // range of angles
+  virtual void set_srange(float s0, float s1) = 0; // range of scales
 
   // set model segments
   virtual void clear_msources() = 0;
@@ -195,8 +193,8 @@ struct RastSS2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0;  // range of angles
-  virtual void set_srange(float s0, float s1) = 0;  // range of scales
+  virtual void set_arange(float a0, float a1) = 0; // range of angles
+  virtual void set_srange(float s0, float s1) = 0; // range of scales
 
   // set model segments
   virtual void clear_msources() = 0;
@@ -235,8 +233,8 @@ struct RastRS2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0;  // range of angles
-  virtual void set_srange(float s0, float s1) = 0;  // range of scales
+  virtual void set_arange(float a0, float a1) = 0; // range of angles
+  virtual void set_srange(float s0, float s1) = 0; // range of scales
 
   // set model segments
   virtual void clear_msources() = 0;
@@ -265,7 +263,7 @@ struct RastRS2D {
 struct AlignmentP2D {
   // set parameters
   virtual void set_epsilon(float e) = 0;
-  virtual void set_srange(float min, float max) = 0;  // range of scales
+  virtual void set_srange(float min, float max) = 0; // range of scales
 
   // set model points
   virtual void clear_mpoints() = 0;
@@ -289,4 +287,4 @@ struct AlignmentP2D {
 
 AlignmentP2D *makeAlignmentP2D();
 
-#endif  // RAST_SRC_RAST_H_
+#endif // RAST_SRC_RAST_H_

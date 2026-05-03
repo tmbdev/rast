@@ -37,7 +37,8 @@ void shuffle(narray<T> &narray) {
   int n = narray.length();
   for (int i = 0; i < n - 1; i++) {
     int j = urand48() % (n - i) + i;
-    if (i != j) swap(narray[i], narray[j]);
+    if (i != j)
+      swap(narray[i], narray[j]);
   }
 }
 
@@ -52,7 +53,8 @@ struct CAlignmentP2D : AlignmentP2D {
   float minscale;
   float maxscale;
   void computeImagePointTable() {
-    if (!use_trie) return;
+    if (!use_trie)
+      return;
     itrie.init(eps, 2000, 2000, -1000, -1000);
     for (int i = 0; i < image.length(); i++) {
       vec2 p = image.at(i);
@@ -70,7 +72,8 @@ struct CAlignmentP2D : AlignmentP2D {
     vec2 pm1 = model.at(m1);
     rotation = cdiv(pi1 - pi0, pm1 - pm0);
     float scale = rotation.magnitude();
-    if (scale < minscale || scale > maxscale) return 0.0;
+    if (scale < minscale || scale > maxscale)
+      return 0.0;
     transl = pi0 - cmul(rotation, pm0);
     ASSERT(distance(cmul(rotation, pm0) + transl, pi0) < 0.01);
     return evaluateAlignment0();
@@ -84,8 +87,7 @@ struct CAlignmentP2D : AlignmentP2D {
       int mi = -1;
       if (use_trie) {
         narray<int> candidates;
-        itrie.query(candidates, tp[0] - eps, tp[1] - eps, tp[0] + eps,
-                    tp[1] + eps);
+        itrie.query(candidates, tp[0] - eps, tp[1] - eps, tp[0] + eps, tp[1] + eps);
         for (int ii = 0; ii < candidates.length(); ii++) {
           int i = candidates[ii];
           if (distance(image.at(i), tp) < eps) {
@@ -120,7 +122,8 @@ struct CAlignmentP2D : AlignmentP2D {
       for (int i1 = i0 + 1; i1 < image.length(); i1++) {
         for (int m0 = 0; m0 < model.length(); m0++) {
           for (int m1 = 0; m1 < model.length(); m1++) {
-            if (m0 == m1) continue;
+            if (m0 == m1)
+              continue;
             float quality = evaluateAlignment(i0, i1, m0, m1);
             if (quality > solution.quality) {
               solution.i0 = i0;
@@ -156,8 +159,6 @@ struct CAlignmentP2D : AlignmentP2D {
   float angle() { return normangleOf(angleOf(solution.rotation)); }
   float scale() { return norm(solution.rotation); }
 };
-}
+} // namespace lumo_calignmentp2d
 
-AlignmentP2D *makeAlignmentP2D() {
-  return new lumo_calignmentp2d::CAlignmentP2D();
-}
+AlignmentP2D *makeAlignmentP2D() { return new lumo_calignmentp2d::CAlignmentP2D(); }

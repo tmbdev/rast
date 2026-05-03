@@ -31,7 +31,8 @@ struct Segment {
     dir = (q - p).normalized();
     l0 = dir * p;
     l1 = dir * q;
-    if (l1 < l0) swap(l0, l1);
+    if (l1 < l0)
+      swap(l0, l1);
     normal = ::normal(dir);
     d = normal * p;
     a = angleOf(dir);
@@ -40,7 +41,8 @@ struct Segment {
   vec2 sub(float l) { return p + dir * l; }
   float within(float eps, float delta, vec2 a) {
     float la = dir * a;
-    if (la < l0 - eps - delta || la > l1 + eps + delta) return 0;
+    if (la < l0 - eps - delta || la > l1 + eps + delta)
+      return 0;
     float err = max(0.0, fabs(normal * a - d) - delta);
     return err < eps;
     ;
@@ -58,13 +60,16 @@ struct Segment {
     float la = dir * a;
     float q = 1.0;
     float dl = la - (l0 - delta);
-    if (dl < -eps) return 0;
-    if (dl < 0) q = 1.0 - sqr(dl * dl / (eps * eps));
+    if (dl < -eps)
+      return 0;
+    if (dl < 0)
+      q = 1.0 - sqr(dl * dl / (eps * eps));
     float dr = la - (l1 + delta);
-    if (dr > eps) return 0;
-    if (dr > 0) q = 1.0 - sqr(dr * dr / (eps * eps));
-    q *= max(0.0,
-             1.0 - sqr(max(0.0, fabs(normal * a - d) - delta)) / (eps * eps));
+    if (dr > eps)
+      return 0;
+    if (dr > 0)
+      q = 1.0 - sqr(dr * dr / (eps * eps));
+    q *= max(0.0, 1.0 - sqr(max(0.0, fabs(normal * a - d) - delta)) / (eps * eps));
     return q;
   }
 #endif
@@ -73,11 +78,14 @@ struct Segment {
     float lb = dir * b;
     float low = min(la, lb);
     float high = max(la, lb);
-    if (low < l0 - eps - delta || high > l1 + eps + delta) return 0;
+    if (low < l0 - eps - delta || high > l1 + eps + delta)
+      return 0;
     float erra = max(0.0, fabs(normal * a - d) - delta);
-    if (erra > eps) return 0;
+    if (erra > eps)
+      return 0;
     float errb = max(0.0, fabs(normal * b - d) - delta);
-    if (errb > eps) return 0;
+    if (errb > eps)
+      return 0;
     return (high - low) + 2 * delta;
   }
   float lsq(float eps, float delta, vec2 a, vec2 b) {
@@ -85,11 +93,14 @@ struct Segment {
     float lb = dir * b;
     float low = min(la, lb);
     float high = max(la, lb);
-    if (low < l0 - eps - delta || high > l1 + eps + delta) return 0;
+    if (low < l0 - eps - delta || high > l1 + eps + delta)
+      return 0;
     float erra = max(0.0, fabs(normal * a - d) - delta);
-    if (erra > eps) return 0;
+    if (erra > eps)
+      return 0;
     float errb = max(0.0, fabs(normal * b - d) - delta);
-    if (errb > eps) return 0;
+    if (errb > eps)
+      return 0;
     float qa = max(0.0, 1.0 - sqr(erra) / sqr(eps));
     float qb = max(0.0, 1.0 - sqr(errb) / sqr(eps));
     return qa * qb * ((high - low) + 2 * delta);
@@ -102,24 +113,26 @@ typedef Segment Msource;
 
 static float angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI) d += 2 * M_PI;
-  while (d > M_PI) d -= 2 * M_PI;
+  while (d < -M_PI)
+    d += 2 * M_PI;
+  while (d > M_PI)
+    d -= 2 * M_PI;
   return fabs(d);
 }
 
 static float unoriented_angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI / 2) d += M_PI;
-  while (d > M_PI / 2) d -= M_PI;
+  while (d < -M_PI / 2)
+    d += M_PI;
+  while (d > M_PI / 2)
+    d -= M_PI;
   return fabs(d);
 }
 
 struct Region {
   vector<float> low;
   vector<float> high;
-  vec2 translation() {
-    return vec2((high(0) + low(0)) / 2.0, (high(1) + low(1)) / 2.0);
-  }
+  vec2 translation() { return vec2((high(0) + low(0)) / 2.0, (high(1) + low(1)) / 2.0); }
   float angle() { return (high(2) + low(2)) / 2.0; }
   float scale() { return (high(3) + low(3)) / 2.0; }
   vec2 rotation() {
@@ -127,9 +140,7 @@ struct Region {
     float s = scale();
     return vec2(s * cos(a), s * sin(a));
   }
-  float tdelta() {
-    return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0);
-  }
+  float tdelta() { return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0); }
   float adelta() { return (high(2) - low(2)) / 2.0; }
   float smax() { return high(3); }
   float smin() { return low(3); }
@@ -163,10 +174,9 @@ struct State {
   float ubound;
 
   void print(FILE *stream = stdout) {
-    fprintf(stream, "<%d [%g:%g] (%g:%g %g:%g) %g:%g %g:%g>", depth, lbound,
-            ubound, region.low(0), region.high(0), region.low(1),
-            region.high(1), region.low(2), region.high(2), region.low(3),
-            region.high(3));
+    fprintf(stream, "<%d [%g:%g] (%g:%g %g:%g) %g:%g %g:%g>", depth, lbound, ubound, region.low(0),
+            region.high(0), region.low(1), region.high(1), region.low(2), region.high(2),
+            region.low(3), region.high(3));
   }
 
   void set(int depth, Region &oregion, CPairs omatches) {
@@ -185,7 +195,8 @@ struct CRastS2D : RastS2D {
   bool final(Region &r, float delta) {
     for (int i = 0; i < r.low.length(); i++) {
       float v = (r.high(i) - r.low(i)) * double(splitscale(i));
-      if (v > delta) return false;
+      if (v > delta)
+        return false;
     }
     return true;
   }
@@ -196,7 +207,8 @@ struct CRastS2D : RastS2D {
     float mv = 0.0;
     for (int i = 0; i < dim; i++) {
       float v = (r.high(i) - r.low(i)) * splitscale(i);
-      if (v < mv) continue;
+      if (v < mv)
+        continue;
       mv = v;
       mi = i;
     }
@@ -256,7 +268,8 @@ struct CRastS2D : RastS2D {
   double priority(CState state) {
     double priority = 1e30;
     priority = state->ubound + 1e-4 * state->lbound;
-    if (priority >= state->ubound + 1) throw "error";
+    if (priority >= state->ubound + 1)
+      throw "error";
     return priority;
   }
 
@@ -271,7 +284,8 @@ struct CRastS2D : RastS2D {
     results.clear();
     queue.clear();
     used.resize(ipoints.length());
-    for (int i = 0; i < used.length(); i++) used[i] = false;
+    for (int i = 0; i < used.length(); i++)
+      used[i] = false;
     CState initial_state;
     initial_state->init(msources, ipoints, *this);
     initial_state->region.low.copyfrom(tlow);
@@ -280,7 +294,8 @@ struct CRastS2D : RastS2D {
     initial_state->generation = generation;
     queue.insert(initial_state, initial_state->ubound);
     for (int iter = 0;; iter++) {
-      if (queue.length() < 1) break;
+      if (queue.length() < 1)
+        break;
       CState top;
       top = queue.extractMax();
       // top->print(); printf("\n");
@@ -292,8 +307,7 @@ struct CRastS2D : RastS2D {
       }
       if (verbose && iter % 10000 == 0) {
         float q = results.length() > 0 ? results[0]->ubound : 0.0;
-        fprintf(stderr, "# %10d result %6g queue %7d", iter, q,
-                1 + queue.length());
+        fprintf(stderr, "# %10d result %6g queue %7d", iter, q, 1 + queue.length());
         fprintf(stderr, "   ");
         top->print(stderr);
         fprintf(stderr, "\n");
@@ -313,7 +327,8 @@ struct CRastS2D : RastS2D {
           used[matches[i].ipoint] = true;
         }
         generation++;
-        if (results.length() >= maxresults) return;
+        if (results.length() >= maxresults)
+          return;
         continue;
       }
       Region subregions[2];
@@ -323,7 +338,8 @@ struct CRastS2D : RastS2D {
         substates[i]->set(top->depth + 1, subregions[i], top->matches);
         substates[i]->eval(*this);
         substates[i]->generation = generation;
-        if (substates[i]->ubound < min_q) continue;
+        if (substates[i]->ubound < min_q)
+          continue;
         queue.insert(substates[i], priority(substates[i]));
       }
     }
@@ -387,15 +403,12 @@ struct CRastS2D : RastS2D {
   int nresults() { return results.length(); }
   float ubound(int rank) { return results[rank]->ubound; }
   float lbound(int rank) { return results[rank]->lbound; }
-  float translation(int rank, int dim) {
-    return results[rank]->region.translation()[dim];
-  }
+  float translation(int rank, int dim) { return results[rank]->region.translation()[dim]; }
   float angle(int rank) { return results[rank]->region.angle(); }
   float scale(int rank) { return results[rank]->region.scale(); }
 };
 
-void State::init(narray<Msource> &msources, narray<Ipoint> &ipoints,
-                 CRastS2D &env) {
+void State::init(narray<Msource> &msources, narray<Ipoint> &ipoints, CRastS2D &env) {
   depth = 0;
   region.low.set(0.0, 0.0, 0.0);
   region.high.set(0.0, 0.0, 0.0);
@@ -440,7 +453,8 @@ void State::eval(CRastS2D &env) {
   Pairs &omatches = parent_matches;
   int n = omatches.length();
   float eps = env.eps;
-  if (env.eps_scales) eps = min(smax * eps, env.ieps);
+  if (env.eps_scales)
+    eps = min(smax * eps, env.ieps);
   float aeps = env.aeps;
   for (int i = 0; i < n;) {
     env.n_transforms++;
@@ -459,27 +473,32 @@ void State::eval(CRastS2D &env) {
     float llbound = 0.0;
     float lubound = 0.0;
     for (; i < n; i++) {
-      if (omatches[i].msource != msource_index) break;
+      if (omatches[i].msource != msource_index)
+        break;
       env.n_distances++;
       int ipoint_index = omatches[i].ipoint;
-      if (used[ipoint_index]) continue;
+      if (used[ipoint_index])
+        continue;
       Ipoint &ipoint = ipoints[ipoint_index];
       float adiff;
       if (env.unoriented)
         adiff = unoriented_angle_diff(ipoint.a, tangle);
       else
         adiff = angle_diff(ipoint.a, tangle);
-      if (adiff > aloose) continue;
+      if (adiff > aloose)
+        continue;
       if (!env.use_lsq) {
         float uq = tmseg.within(eps, delta, ipoint.p, ipoint.q);
-        if (uq <= 0.0) continue;
+        if (uq <= 0.0)
+          continue;
         float lq = tmseg.within(eps, 0.0, ipoint.p, ipoint.q);
         lubound += uq;
         llbound += lq;
         nmatches.push(IMPair(msource_index, ipoint_index));
       } else {
         float uq = tmseg.lsq(eps, delta, ipoint.p, ipoint.q);
-        if (uq <= 0.0) continue;
+        if (uq <= 0.0)
+          continue;
         float lq = tmseg.lsq(eps, 0.0, ipoint.p, ipoint.q);
         lubound += uq;
         llbound += lq;
@@ -502,7 +521,7 @@ void State::eval(CRastS2D &env) {
 	ubound = (ubound * 100.0) / env.model_total / region.smin();
 #endif
 }
-}
+} // namespace lumo_crasts2d
 
 RastS2D *makeRastS2D() { return new lumo_crasts2d::CRastS2D(); }
 
@@ -519,9 +538,7 @@ struct seg2 {
     this->u = u;
     this->v = v;
   }
-  seg2 transform(vec2 rot, vec2 tr) {
-    return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr);
-  }
+  seg2 transform(vec2 rot, vec2 tr) { return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr); }
   seg2 operator+(vec2 tr) { return seg2(u + tr, v + tr); }
   float angle() { return angleOf(v - u); }
   float length() { return (v - u).magnitude(); }
@@ -578,13 +595,11 @@ int main(int argc, char **argv) {
     }
     rast->match();
     assert(rast->nresults() > 0);
-    printf(
-        "*** %3d: %8.4f %8.4f %8.4f %8.4f\n"
-        "         %8.4f %8.4f %8.4f %8.4f\n"
-        "    %8.4f %8.4f\n",
-        trial, rast->translation(0, 0), rast->translation(0, 1), rast->angle(0),
-        rast->scale(0), tr[0], tr[1], alpha, scale, rast->ubound(0),
-        rast->lbound(0));
+    printf("*** %3d: %8.4f %8.4f %8.4f %8.4f\n"
+           "         %8.4f %8.4f %8.4f %8.4f\n"
+           "    %8.4f %8.4f\n",
+           trial, rast->translation(0, 0), rast->translation(0, 1), rast->angle(0), rast->scale(0),
+           tr[0], tr[1], alpha, scale, rast->ubound(0), rast->lbound(0));
     assert(within(rast->translation(0, 0), tr[0], 2.0 * eps));
     assert(within(rast->translation(0, 1), tr[1], 2.0 * eps));
     // assert(within(rast->angle(0),alpha,0.05));

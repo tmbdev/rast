@@ -36,8 +36,10 @@ struct LineRegion {
   }
 
   void set(float th0, float th1, float r0, float r1) {
-    if (th1 <= th0) throw "parameters (th)";
-    if (r1 <= r0) throw "parameters (r)";
+    if (th1 <= th0)
+      throw "parameters (th)";
+    if (r1 <= r0)
+      throw "parameters (r)";
     this->th0 = th0;
     this->th1 = th1;
     this->r0 = r0;
@@ -65,9 +67,11 @@ struct LineRegion {
     float d3 = -(dotm - rm);
     float d4 = -(dot1 - r0);
     float upper = 0.0;
-    if (d0 >= 0 && d1 >= 0) upper = ::min(d0, d1);
+    if (d0 >= 0 && d1 >= 0)
+      upper = ::min(d0, d1);
     float lower = 0.0;
-    if (d2 >= 0 && d3 >= 0 && d4 >= 0) lower = min(d2, d3, d4);
+    if (d2 >= 0 && d3 >= 0 && d4 >= 0)
+      lower = min(d2, d3, d4);
     return max(upper, lower);
   }
 
@@ -76,18 +80,24 @@ struct LineRegion {
   float adist(float a, bool unoriented) {
     float diff = a - thm;
     if (unoriented) {
-      while (diff < -M_PI / 4) diff += M_PI / 2;
-      while (diff > M_PI / 4) diff -= M_PI / 2;
+      while (diff < -M_PI / 4)
+        diff += M_PI / 2;
+      while (diff > M_PI / 4)
+        diff -= M_PI / 2;
       diff = fabs(diff);
       diff -= therr;
-      if (diff < 0) return 0.0;
+      if (diff < 0)
+        return 0.0;
       return diff;
     } else {
-      while (diff < -M_PI / 2) diff += M_PI;
-      while (diff > M_PI / 2) diff -= M_PI;
+      while (diff < -M_PI / 2)
+        diff += M_PI;
+      while (diff > M_PI / 2)
+        diff -= M_PI;
       diff = fabs(diff);
       diff -= therr;
-      if (diff < 0) return 0.0;
+      if (diff < 0)
+        return 0.0;
       return diff;
     }
   }
@@ -160,24 +170,29 @@ struct CLinesS2D : LinesS2D {
     float aeps2 = aeps * aeps;
     for (int i = 0; i < input.length(); i++) {
       int index = input[i];
-      if (used[index]) continue;
+      if (used[index])
+        continue;
       Segment p = points[index];
       float q = 1.0;
       float da = region.adist(p.a, unoriented);
       if (lsq) {
         q *= max(0.0, 1.0 - da * da / aeps2);
       } else {
-        if (da > aeps) q = 0.0;
+        if (da > aeps)
+          q = 0.0;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0)
+        continue;
       float du = region.dist(p.u[0], p.u[1]);
       float dv = region.dist(p.v[0], p.v[1]);
       if (lsq) {
         q *= max(0.0, 1.0 - du * du / eps2) * max(0.0, 1.0 - dv * dv / eps2);
       } else {
-        if (du > eps || dv > eps) q = 0.0;
+        if (du > eps || dv > eps)
+          q = 0.0;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0)
+        continue;
       q *= p.w;
       weight += q;
       result.push(index);
@@ -187,7 +202,8 @@ struct CLinesS2D : LinesS2D {
   }
 
   void compute() {
-    if (verbose) fprintf(stderr, "[#segments %d]\n", points.length());
+    if (verbose)
+      fprintf(stderr, "[#segments %d]\n", points.length());
     generation = 0;
     // bugfix starts 6.10.04
     results.clear();
@@ -199,19 +215,20 @@ struct CLinesS2D : LinesS2D {
 #if 1
     for (int i = 0; i < 8; i++) {
       CState initial;
-      for (int j = 0; j < points.length(); j++) initial->matches->push(j);
+      for (int j = 0; j < points.length(); j++)
+        initial->matches->push(j);
       if (unoriented)
         initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, 0.0, maxoffset);
       else
-        initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, -maxoffset,
-                            maxoffset);
+        initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, -maxoffset, maxoffset);
       filter(initial);
       queue.insert(initial, initial->weight);
     }
 #else
     {
       CState initial;
-      for (int j = 0; j < points.length(); j++) initial->matches->push(j);
+      for (int j = 0; j < points.length(); j++)
+        initial->matches->push(j);
       if (unoriented)
         initial->region.set(0, 2 * M_PI, 0.0, maxoffset);
       else
@@ -222,7 +239,8 @@ struct CLinesS2D : LinesS2D {
 #endif
 
     for (int iter = 0;; iter++) {
-      if (queue.length() < 1) break;
+      if (queue.length() < 1)
+        break;
       CState state;
       state = queue.extractMax();
       if (state->generation != generation) {
@@ -237,12 +255,13 @@ struct CLinesS2D : LinesS2D {
         fprintf(stderr, "(%g)\n", state->weight);
       } else if (verbose > 0) {
         if (iter % 1000 == 0 && queue.length() > 0) {
-          fprintf(stderr, "[%d %d %g %d]\n", iter, queue.length(),
-                  queue.topPriority(), results.length());
+          fprintf(stderr, "[%d %d %g %d]\n", iter, queue.length(), queue.topPriority(),
+                  results.length());
         }
       }
 
-      if (state->weight < minweight) continue;
+      if (state->weight < minweight)
+        continue;
 
       if (pregion.rerr < tol && pregion.therr < atol) {
         results.push(state);
@@ -253,7 +272,8 @@ struct CLinesS2D : LinesS2D {
           // printf("S %g %g  %g %g  %g\n",p.u[0],p.u[1],p.v[0],p.v[1],p.a);
         }
         generation++;
-        if (results.length() >= maxresults) break;
+        if (results.length() >= maxresults)
+          break;
         continue;
       }
 
@@ -305,6 +325,6 @@ struct CLinesS2D : LinesS2D {
   float angle(int i) { return results[i]->region.thm; }
   float offset(int i) { return results[i]->region.rm; }
 };
-}
+} // namespace lumo_cliness2d
 
 LinesS2D *makeLinesS2D() { return new lumo_cliness2d::CLinesS2D(); }

@@ -41,8 +41,10 @@ struct LineRegion {
   }
 
   void set(float th0, float th1, float r0, float r1) {
-    if (th1 <= th0) throw "parameters (th)";
-    if (r1 <= r0) throw "parameters (r)";
+    if (th1 <= th0)
+      throw "parameters (th)";
+    if (r1 <= r0)
+      throw "parameters (r)";
     this->th0 = th0;
     this->th1 = th1;
     this->r0 = r0;
@@ -70,9 +72,11 @@ struct LineRegion {
     float d3 = -(dotm - rm);
     float d4 = -(dot1 - r0);
     float upper = 0.0;
-    if (d0 >= 0 && d1 >= 0) upper = ::min(d0, d1);
+    if (d0 >= 0 && d1 >= 0)
+      upper = ::min(d0, d1);
     float lower = 0.0;
-    if (d2 >= 0 && d3 >= 0 && d4 >= 0) lower = min(d2, d3, d4);
+    if (d2 >= 0 && d3 >= 0 && d4 >= 0)
+      lower = min(d2, d3, d4);
     return max(upper, lower);
   }
 
@@ -81,18 +85,24 @@ struct LineRegion {
   float adist(float a, bool unoriented) {
     float diff = a - thm;
     if (unoriented) {
-      while (diff < -M_PI / 4) diff += M_PI / 2;
-      while (diff > M_PI / 4) diff -= M_PI / 2;
+      while (diff < -M_PI / 4)
+        diff += M_PI / 2;
+      while (diff > M_PI / 4)
+        diff -= M_PI / 2;
       diff = fabs(diff);
       diff -= therr;
-      if (diff < 0) return 0.0;
+      if (diff < 0)
+        return 0.0;
       return diff;
     } else {
-      while (diff < -M_PI / 2) diff += M_PI;
-      while (diff > M_PI / 2) diff -= M_PI;
+      while (diff < -M_PI / 2)
+        diff += M_PI;
+      while (diff > M_PI / 2)
+        diff -= M_PI;
       diff = fabs(diff);
       diff -= therr;
-      if (diff < 0) return 0.0;
+      if (diff < 0)
+        return 0.0;
       return diff;
     }
   }
@@ -165,23 +175,28 @@ struct CLinesP2D : LinesP2D {
     float aeps2 = aeps * aeps;
     for (int i = 0; i < input.length(); i++) {
       int index = input[i];
-      if (used[index]) continue;
+      if (used[index])
+        continue;
       Point p = points[index];
       float q = 1.0;
       float da = region.adist(p.a, unoriented);
       if (lsq) {
         q *= max(0.0, 1.0 - da * da / aeps2);
       } else {
-        if (da > aeps) q = 0.0;
+        if (da > aeps)
+          q = 0.0;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0)
+        continue;
       float d = region.dist(p.p[0], p.p[1]);
       if (lsq) {
         q *= max(0.0, 1.0 - d * d / eps2);
       } else {
-        if (d > eps) q = 0.0;
+        if (d > eps)
+          q = 0.0;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0)
+        continue;
       q *= p.w;
       weight += q;
       result.push(index);
@@ -191,13 +206,15 @@ struct CLinesP2D : LinesP2D {
   }
 
   void compute(float a0, float a1, float d0, float d1) {
-    if (verbose) fprintf(stderr, "[#segments %d]\n", points.length());
+    if (verbose)
+      fprintf(stderr, "[#segments %d]\n", points.length());
     generation = 0;
     used.resize(points.length());
     fill(used, false);
 
     CState initial;
-    for (int j = 0; j < points.length(); j++) initial->matches->push(j);
+    for (int j = 0; j < points.length(); j++)
+      initial->matches->push(j);
     initial->region.set(a0, a1, d0, d1);
     filter(initial);
     queue.insert(initial, initial->weight);
@@ -205,7 +222,8 @@ struct CLinesP2D : LinesP2D {
   }
 
   void compute() {
-    if (verbose) fprintf(stderr, "[#segments %d]\n", points.length());
+    if (verbose)
+      fprintf(stderr, "[#segments %d]\n", points.length());
     generation = 0;
     used.resize(points.length());
     fill(used, false);
@@ -213,18 +231,19 @@ struct CLinesP2D : LinesP2D {
 #if 1
     for (int i = 0; i < 8; i++) {
       CState initial;
-      for (int j = 0; j < points.length(); j++) initial->matches->push(j);
+      for (int j = 0; j < points.length(); j++)
+        initial->matches->push(j);
       if (unoriented)
         initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, 0.0, maxoffset);
       else
-        initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, -maxoffset,
-                            maxoffset);
+        initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, -maxoffset, maxoffset);
       filter(initial);
       queue.insert(initial, initial->weight);
     }
 #else
     CState initial;
-    for (int j = 0; j < points.length(); j++) initial->matches->push(j);
+    for (int j = 0; j < points.length(); j++)
+      initial->matches->push(j);
     if (unoriented)
       initial->region.set(0, 2 * M_PI, 0.0, maxoffset);
     else
@@ -237,7 +256,8 @@ struct CLinesP2D : LinesP2D {
 
   void compute_() {
     for (int iter = 0;; iter++) {
-      if (queue.length() < 1) break;
+      if (queue.length() < 1)
+        break;
       CState state;
       state = queue.extractMax();
       if (state->generation != generation) {
@@ -252,12 +272,13 @@ struct CLinesP2D : LinesP2D {
         fprintf(stderr, "(%g)\n", state->weight);
       } else if (verbose > 0) {
         if (iter % 1000 == 0 && queue.length() > 0) {
-          fprintf(stderr, "[%d %d %g %d]\n", iter, queue.length(),
-                  queue.topPriority(), results.length());
+          fprintf(stderr, "[%d %d %g %d]\n", iter, queue.length(), queue.topPriority(),
+                  results.length());
         }
       }
 
-      if (state->weight < minweight) continue;
+      if (state->weight < minweight)
+        continue;
 
       if (pregion.rerr < tol && pregion.therr < atol) {
         results.push(state);
@@ -265,10 +286,12 @@ struct CLinesP2D : LinesP2D {
         for (int i = 0; i < matches.length(); i++) {
           used[matches[i]] = true;
           Point &p = points[matches[i]];
-          if (verbose) printf("P %g %g %g\n", p.p[0], p.p[1], p.a);
+          if (verbose)
+            printf("P %g %g %g\n", p.p[0], p.p[1], p.a);
         }
         generation++;
-        if (results.length() >= maxresults) break;
+        if (results.length() >= maxresults)
+          break;
         continue;
       }
 
@@ -320,7 +343,7 @@ struct CLinesP2D : LinesP2D {
   float angle(int i) { return results[i]->region.thm; }
   float offset(int i) { return results[i]->region.rm; }
 };
-}
+} // namespace lumo_clinesp2d
 
 LinesP2D *makeLinesP2D() { return new lumo_clinesp2d::CLinesP2D(); }
 
@@ -339,7 +362,6 @@ int main(int argc, char **argv) {
     lines->add_ipoint(x, y, test_angle, 1.0);
   }
   lines->compute();
-  printf("weight=%g   angle=%g offset=%g\n", lines->weight(0), lines->angle(0),
-         lines->offset(0));
+  printf("weight=%g   angle=%g offset=%g\n", lines->weight(0), lines->angle(0), lines->offset(0));
 }
 #endif

@@ -30,7 +30,8 @@ struct Segment {
     dir = (q - p).normalized();
     l0 = dir * p;
     l1 = dir * q;
-    if (l1 < l0) swap(l0, l1);
+    if (l1 < l0)
+      swap(l0, l1);
     normal = ::normal(dir);
     d = normal * p;
     a = angleOf(dir);
@@ -39,7 +40,8 @@ struct Segment {
   vec2 sub(float l) { return p + dir * l; }
   float within(float eps, float delta, vec2 a) {
     float la = dir * a;
-    if (la < l0 - eps - delta || la > l1 + eps + delta) return 0;
+    if (la < l0 - eps - delta || la > l1 + eps + delta)
+      return 0;
     float err = max(0.0, fabs(normal * a - d) - delta);
     return err < eps;
     ;
@@ -57,13 +59,16 @@ struct Segment {
     float la = dir * a;
     float q = 1.0;
     float dl = la - (l0 - delta);
-    if (dl < -eps) return 0;
-    if (dl < 0) q = 1.0 - sqr(dl * dl / (eps * eps));
+    if (dl < -eps)
+      return 0;
+    if (dl < 0)
+      q = 1.0 - sqr(dl * dl / (eps * eps));
     float dr = la - (l1 + delta);
-    if (dr > eps) return 0;
-    if (dr > 0) q = 1.0 - sqr(dr * dr / (eps * eps));
-    q *= max(0.0,
-             1.0 - sqr(max(0.0, fabs(normal * a - d) - delta)) / (eps * eps));
+    if (dr > eps)
+      return 0;
+    if (dr > 0)
+      q = 1.0 - sqr(dr * dr / (eps * eps));
+    q *= max(0.0, 1.0 - sqr(max(0.0, fabs(normal * a - d) - delta)) / (eps * eps));
     return q;
   }
 #endif
@@ -75,24 +80,26 @@ typedef Segment Msource;
 
 static float angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI) d += 2 * M_PI;
-  while (d > M_PI) d -= 2 * M_PI;
+  while (d < -M_PI)
+    d += 2 * M_PI;
+  while (d > M_PI)
+    d -= 2 * M_PI;
   return fabs(d);
 }
 
 static float unoriented_angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI / 2) d += M_PI;
-  while (d > M_PI / 2) d -= M_PI;
+  while (d < -M_PI / 2)
+    d += M_PI;
+  while (d > M_PI / 2)
+    d -= M_PI;
   return fabs(d);
 }
 
 struct Region {
   vector<float> low;
   vector<float> high;
-  vec2 translation() {
-    return vec2((high(0) + low(0)) / 2.0, (high(1) + low(1)) / 2.0);
-  }
+  vec2 translation() { return vec2((high(0) + low(0)) / 2.0, (high(1) + low(1)) / 2.0); }
   float angle() { return (high(2) + low(2)) / 2.0; }
   float scale() { return (high(3) + low(3)) / 2.0; }
   vec2 rotation() {
@@ -100,9 +107,7 @@ struct Region {
     float s = scale();
     return vec2(s * cos(a), s * sin(a));
   }
-  float tdelta() {
-    return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0);
-  }
+  float tdelta() { return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0); }
   float adelta() { return (high(2) - low(2)) / 2.0; }
   float smax() { return high(3); }
   float sdelta() { return (high(3) - low(3)) / 2.0; }
@@ -143,10 +148,9 @@ struct State {
   float ubound;
 
   void print(FILE *stream = stdout) {
-    fprintf(stream, "<%d [%g:%g] (%g:%g %g:%g) %g:%g %g:%g>", depth, lbound,
-            ubound, region.low(0), region.high(0), region.low(1),
-            region.high(1), region.low(2), region.high(2), region.low(3),
-            region.high(3));
+    fprintf(stream, "<%d [%g:%g] (%g:%g %g:%g) %g:%g %g:%g>", depth, lbound, ubound, region.low(0),
+            region.high(0), region.low(1), region.high(1), region.low(2), region.high(2),
+            region.low(3), region.high(3));
   }
 
   void set(int depth, Region &oregion, CPairs omatches) {
@@ -156,8 +160,10 @@ struct State {
   }
 
   void init(narray<Msource> &msources, narray<Ipoint> &ipoints, float sdist) {
-    if (msources.length() > 255) throw "too many line segments in model";
-    if (ipoints.length() > 32000) throw "too many line segments in image";
+    if (msources.length() > 255)
+      throw "too many line segments in model";
+    if (ipoints.length() > 32000)
+      throw "too many line segments in image";
     depth = 0;
     region.low.set(0.0, 0.0, 0.0);
     region.high.set(0.0, 0.0, 0.0);
@@ -184,7 +190,8 @@ struct CRastSS2D : RastSS2D {
   bool final(Region &r, float delta) {
     for (int i = 0; i < r.low.length(); i++) {
       float v = (r.high(i) - r.low(i)) * double(splitscale(i));
-      if (v > delta) return false;
+      if (v > delta)
+        return false;
     }
     return true;
   }
@@ -195,7 +202,8 @@ struct CRastSS2D : RastSS2D {
     float mv = 0.0;
     for (int i = 0; i < dim; i++) {
       float v = (r.high(i) - r.low(i)) * splitscale(i);
-      if (v < mv) continue;
+      if (v < mv)
+        continue;
       mv = v;
       mi = i;
     }
@@ -252,7 +260,8 @@ struct CRastSS2D : RastSS2D {
   double priority(CState state) {
     double priority = 1e30;
     priority = state->ubound + 1e-4 * state->lbound;
-    if (priority >= state->ubound + 1) throw "error";
+    if (priority >= state->ubound + 1)
+      throw "error";
     return priority;
   }
 
@@ -267,7 +276,8 @@ struct CRastSS2D : RastSS2D {
     results.clear();
     queue.clear();
     used.resize(ipoints.length());
-    for (int i = 0; i < used.length(); i++) used[i] = false;
+    for (int i = 0; i < used.length(); i++)
+      used[i] = false;
     CState initial_state;
     initial_state->init(msources, ipoints, sdist);
     initial_state->region.low.copyfrom(tlow);
@@ -276,7 +286,8 @@ struct CRastSS2D : RastSS2D {
     initial_state->generation = generation;
     queue.insert(initial_state, initial_state->ubound);
     for (int iter = 0;; iter++) {
-      if (queue.length() < 1) break;
+      if (queue.length() < 1)
+        break;
       CState top;
       top = queue.extractMax();
       // top->print(); printf("\n");
@@ -288,21 +299,20 @@ struct CRastSS2D : RastSS2D {
       }
       if (verbose && iter % 10000 == 0) {
         float q = results.length() > 0 ? results[0]->ubound : 0.0;
-        fprintf(stderr, "# %10d result %6g queue %7d", iter, q,
-                1 + queue.length());
+        fprintf(stderr, "# %10d result %6g queue %7d", iter, q, 1 + queue.length());
         fprintf(stderr, "   ");
         top->print(stderr);
         fprintf(stderr, "\n");
       }
-      if ((1.0 - qtolerance) * top->ubound <= top->lbound ||
-          final(top->region, tolerance)) {
+      if ((1.0 - qtolerance) * top->ubound <= top->lbound || final(top->region, tolerance)) {
         results.push(top);
         Pairs &matches = top->matches;
         for (int i = 0; i < matches.length(); i++) {
           used[matches[i].ipoint] = true;
         }
         generation++;
-        if (results.length() >= maxresults) return;
+        if (results.length() >= maxresults)
+          return;
         continue;
       }
       Region subregions[2];
@@ -312,7 +322,8 @@ struct CRastSS2D : RastSS2D {
         substates[i]->set(top->depth + 1, subregions[i], top->matches);
         substates[i]->eval(*this);
         substates[i]->generation = generation;
-        if (substates[i]->ubound < min_q) continue;
+        if (substates[i]->ubound < min_q)
+          continue;
         queue.insert(substates[i], priority(substates[i]));
       }
     }
@@ -373,9 +384,7 @@ struct CRastSS2D : RastSS2D {
   int nresults() { return results.length(); }
   float ubound(int rank) { return results[rank]->ubound; }
   float lbound(int rank) { return results[rank]->lbound; }
-  float translation(int rank, int dim) {
-    return results[rank]->region.translation()[dim];
-  }
+  float translation(int rank, int dim) { return results[rank]->region.translation()[dim]; }
   float angle(int rank) { return results[rank]->region.angle(); }
   float scale(int rank) { return results[rank]->region.scale(); }
 };
@@ -417,35 +426,41 @@ void State::eval(CRastSS2D &env) {
     float aloose = aeps + adelta;
 
     for (; i < n;) {
-      if (omatches[i].msource != msource_index) break;
+      if (omatches[i].msource != msource_index)
+        break;
       float start_l = omatches[i].l;
       float llbound = 0.0;
       float lubound = 0.0;
       for (; i < n; i++) {
         float l = omatches[i].l;
-        if (l != start_l) break;
+        if (l != start_l)
+          break;
         vec2 tmpoint = tmseg.sub(l);
         // printf(".. %g %g\n",l,(tmseg.p-tmpoint).magnitude());
         env.n_distances++;
         int ipoint_index = omatches[i].ipoint;
-        if (used[ipoint_index]) continue;
+        if (used[ipoint_index])
+          continue;
         Ipoint &ipoint = ipoints[ipoint_index];
         float adiff;
         if (env.unoriented)
           adiff = unoriented_angle_diff(ipoint.a, tangle);
         else
           adiff = angle_diff(ipoint.a, tangle);
-        if (adiff > aloose) continue;
+        if (adiff > aloose)
+          continue;
         if (!env.use_lsq) {
           float uq = ipoint.within(eps, delta, tmpoint);
-          if (uq <= 0.0) continue;
+          if (uq <= 0.0)
+            continue;
           float lq = ipoint.within(eps, 0.0, tmpoint);
           lubound = max(lubound, uq);
           llbound = max(llbound, lq);
           nmatches.push(IMPair(msource_index, ipoint_index, l));
         } else {
           float uq = ipoint.lsq(eps, delta, tmpoint);
-          if (uq <= 0.0) continue;
+          if (uq <= 0.0)
+            continue;
           float lq = ipoint.lsq(eps, 0.0, tmpoint);
           lubound = max(lubound, uq);
           llbound = max(llbound, lq);
@@ -457,7 +472,7 @@ void State::eval(CRastSS2D &env) {
     }
   }
 }
-}
+} // namespace lumo_crastss2d
 
 RastSS2D *makeRastSS2D() { return new lumo_crastss2d::CRastSS2D(); }
 
@@ -474,9 +489,7 @@ struct seg2 {
     this->u = u;
     this->v = v;
   }
-  seg2 transform(vec2 rot, vec2 tr) {
-    return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr);
-  }
+  seg2 transform(vec2 rot, vec2 tr) { return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr); }
   seg2 operator+(vec2 tr) { return seg2(u + tr, v + tr); }
   float angle() { return angleOf(v - u); }
   float length() { return (v - u).magnitude(); }
@@ -533,13 +546,11 @@ int main(int argc, char **argv) {
     }
     rast->match();
     assert(rast->nresults() > 0);
-    printf(
-        "*** %3d: %8.4f %8.4f %8.4f %8.4f\n"
-        "         %8.4f %8.4f %8.4f %8.4f\n"
-        "    %8.4f %8.4f\n",
-        trial, rast->translation(0, 0), rast->translation(0, 1), rast->angle(0),
-        rast->scale(0), tr[0], tr[1], alpha, scale, rast->ubound(0),
-        rast->lbound(0));
+    printf("*** %3d: %8.4f %8.4f %8.4f %8.4f\n"
+           "         %8.4f %8.4f %8.4f %8.4f\n"
+           "    %8.4f %8.4f\n",
+           trial, rast->translation(0, 0), rast->translation(0, 1), rast->angle(0), rast->scale(0),
+           tr[0], tr[1], alpha, scale, rast->ubound(0), rast->lbound(0));
     assert(within(rast->translation(0, 0), tr[0], 2.0 * eps));
     assert(within(rast->translation(0, 1), tr[1], 2.0 * eps));
     // assert(within(rast->angle(0),alpha,0.05));
