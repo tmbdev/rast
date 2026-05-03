@@ -5,6 +5,6 @@ set -euo pipefail
 
 PYINC=$(python -c 'import sysconfig; print(sysconfig.get_path("include"))')
 exec make \
-    CXX="$CXX -g -Wall -I. -Icolib -O3 -fPIC" \
+    CXX="$CXX -g -Wall -Isrc -Isrc/colib -O3 -fPIC" \
     PYINC="$PYINC" \
     "$@"
