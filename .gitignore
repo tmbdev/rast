@@ -1,0 +1,18 @@
+# Build outputs
+*.o
+*.a
+*.so
+rast
+rast-test
+cedges
+
+# SWIG-generated
+rast.py
+rast_wrap.cxx
+
+# Pixi environment
+.pixi/
+
+# Python
+__pycache__/
+*.pyc
