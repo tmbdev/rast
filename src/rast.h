@@ -258,6 +258,8 @@ struct RastRS2D {
   virtual ~RastRS2D() {}
 };
 
+RastRS2D *makeRastRS2D();
+
 // point matching using alignment
 
 struct AlignmentP2D {

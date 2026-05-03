@@ -9,10 +9,6 @@
 
 #include "rast.h"
 
-// makeRastRS2D is defined in crastrs2d.cc but not declared in rast.h.
-// Forward-declare it here so this test file compiles standalone.
-RastRS2D *makeRastRS2D();
-
 namespace {
 
 struct Seg {
