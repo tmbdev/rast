@@ -1,17 +1,15 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <random>
+#include <vector>
 
-#include "misc.h"
-#include "narray.h"
-#include "vec2.h"
-using namespace colib;
-
-#include "util.h"
 #include "rast.h"
+#include "util.h"
+#include "vec2.h"
 
 namespace lumo_cinstancep2d {
 
@@ -20,121 +18,108 @@ struct avec {
   float a;
 };
 
-typedef avec Msource;
-typedef avec Mpoint;
-typedef avec Ipoint;
+using Msource = avec;
+using Ipoint = avec;
 
-inline int urand48() { return abs(int(lrand48())); }
+inline int urand48() { return std::abs(int(lrand48())); }
 
-#if 0
-    template <class T>
-    static void shuffle(narray<T> &narray) {
-        int n = narray.length();
-        for(int i=0;i<n-1;i++) {
-            int j = urand48() % (n-i) + i;
-            if(i!=j) swap(narray[i],narray[j]);
-        }
-    }
-#endif
+template <class T>
+static void shuffle(std::vector<T> &v) {
+  for (std::size_t i = 0; i + 1 < v.size(); i++) {
+    std::size_t j = urand48() % (v.size() - i) + i;
+    if (i != j) std::swap(v[i], v[j]);
+  }
+}
 
 struct CInstanceP2D : InstanceP2D {
-  int image_size;
-  int model_size;
+  int image_size{512};
+  int model_size{100};
 
-  int nclutter;
-  int nmodel_total;
-  int nmodel_unoccluded;
-  float error;
-  float aerror;
-  float minscale;
-  float maxscale;
+  int nclutter{50};
+  int nmodel_total{20};
+  int nmodel_unoccluded{10};
+  float error{5.0f};
+  float aerror{0.1f};
+  float minscale{1.0f};
+  float maxscale{1.0f};
 
   vec2 translation;
-  float angle;
-  float scale;
-  float get_param(int i) {
+  float angle{0.0f};
+  float scale{1.0f};
+
+  std::vector<Msource> msources;
+  std::vector<Ipoint> ipoints;
+
+  CInstanceP2D() { nclutter = igetenv("nclutter", 50); }
+
+  float get_param(int i) override {
     switch (i) {
-    case 0:
-      return translation[0];
-    case 1:
-      return translation[1];
-    case 2:
-      return angle;
-    case 3:
-      return scale;
-    default:
-      throw "parameter index out of range";
+      case 0: return translation[0];
+      case 1: return translation[1];
+      case 2: return angle;
+      case 3: return scale;
+      default: throw "parameter index out of range";
     }
   }
-  narray<Msource> msources;
-  narray<Ipoint> ipoints;
 
-  CInstanceP2D() { init(); }
-
-  void init() {
-    image_size = 512;
-    model_size = 100;
-    nclutter = igetenv("nclutter", 50);
-    nmodel_total = 20;
-    nmodel_unoccluded = 10;
-    error = 5.0;
-    aerror = 0.1;
-  }
-
-  void generate() {
+  void generate() override {
     float dx = urand(0.0, image_size);
     float dy = urand(0.0, image_size);
     translation = vec2(dx, dy);
     angle = urand(0.0, 2.0 * M_PI);
     scale = urand(minscale, maxscale);
-    vec2 rotation = vec2(scale * cos(angle), scale * sin(angle));
+    vec2 rotation = vec2(scale * std::cos(angle), scale * std::sin(angle));
     msources.clear();
     ipoints.clear();
     for (int i = 0; i < nmodel_total; i++) {
-      Msource &m = msources.push();
+      Msource m;
       m.p = vec2(urand(-model_size, model_size), urand(-model_size, model_size));
       m.a = urand(0.0, 2 * M_PI);
+      msources.push_back(m);
     }
     for (int i = 0; i < nmodel_unoccluded; i++) {
-      Ipoint &p = ipoints.push();
+      Ipoint p;
       p.p = cmul(rotation, msources[i].p) + translation + randomUniformVectorFromCircle(error);
       p.a = msources[i].a + angle + urand(-aerror, aerror);
+      ipoints.push_back(p);
     }
     shuffle(msources);
     for (int i = 0; i < nclutter; i++) {
-      Ipoint &p = ipoints.push();
+      Ipoint p;
       p.p = vec2(urand(0, image_size), urand(0, image_size));
       p.a = urand(0.0, 2 * M_PI);
+      ipoints.push_back(p);
     }
     shuffle(ipoints);
   }
 
-  void set_image_size(int r) { image_size = r; }
-  void set_model_size(int r) { model_size = r; }
-  void set_nclutter(int v) { nclutter = v; }
-  void set_nmodel_total(int v) { nmodel_total = v; }
-  void set_nmodel_unoccluded(int v) { nmodel_unoccluded = v; }
-  void set_error(float v) { error = v; }
-  void set_aerror(float v) { aerror = v; }
-  void set_srange(float min, float max) {
+  void set_image_size(int r) override { image_size = r; }
+  void set_model_size(int r) override { model_size = r; }
+  void set_nclutter(int v) override { nclutter = v; }
+  void set_nmodel_total(int v) override { nmodel_total = v; }
+  void set_nmodel_unoccluded(int v) override { nmodel_unoccluded = v; }
+  void set_error(float v) override { error = v; }
+  void set_aerror(float v) override { aerror = v; }
+  void set_srange(float min, float max) override {
     minscale = min;
     maxscale = max;
   }
-  int nimage() { return ipoints.length(); }
-  void get_image(float &x, float &y, float &a, int i) {
+
+  int nimage() override { return int(ipoints.size()); }
+  void get_image(float &x, float &y, float &a, int i) override {
     x = ipoints[i].p[0];
     y = ipoints[i].p[1];
     a = ipoints[i].a;
   }
-  int nmodel() { return msources.length(); }
-  void get_model(float &x, float &y, float &a, int i) {
+
+  int nmodel() override { return int(msources.size()); }
+  void get_model(float &x, float &y, float &a, int i) override {
     x = msources[i].p[0];
     y = msources[i].p[1];
     a = msources[i].a;
   }
-
-  ~CInstanceP2D() {}
 };
-} // namespace lumo_cinstancep2d
+
+}  // namespace lumo_cinstancep2d
 
 InstanceP2D *makeInstanceP2D() { return new lumo_cinstancep2d::CInstanceP2D(); }

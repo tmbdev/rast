@@ -1,281 +1,228 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <memory>
+#include <utility>
+#include <vector>
 
-#include "misc.h"
-#include "narray.h"
-#include "vec2.h"
-using namespace colib;
-
-#include "util.h"
+#include "heap.h"
 #include "rast.h"
+#include "util.h"
+#include "vec2.h"
 
 namespace lumo_crasts2d {
 
 struct Segment {
   vec2 p, q;
-  float a;
+  float a{0};
   vec2 dir;
-  float l0, l1;
+  float l0{0}, l1{0};
   vec2 normal;
-  float d;
-  float weight;
-  Segment() {}
-  Segment(vec2 p, vec2 q) { set(p, q); }
-  void set(vec2 p, vec2 q) {
-    this->p = p;
-    this->q = q;
-    dir = (q - p).normalized();
-    l0 = dir * p;
-    l1 = dir * q;
-    if (l1 < l0)
-      swap(l0, l1);
+  float d{0};
+  float weight{0};
+  Segment() = default;
+  Segment(vec2 p_, vec2 q_) { set(p_, q_); }
+  void set(vec2 p_, vec2 q_) {
+    this->p = p_;
+    this->q = q_;
+    dir = (q_ - p_).normalized();
+    l0 = dir * p_;
+    l1 = dir * q_;
+    if (l1 < l0) std::swap(l0, l1);
     normal = ::normal(dir);
-    d = normal * p;
+    d = normal * p_;
     a = angleOf(dir);
   }
-  float length() { return (q - p).magnitude(); }
-  vec2 sub(float l) { return p + dir * l; }
-  float within(float eps, float delta, vec2 a) {
-    float la = dir * a;
-    if (la < l0 - eps - delta || la > l1 + eps + delta)
-      return 0;
-    float err = max(0.0, fabs(normal * a - d) - delta);
+  float length() const { return (q - p).magnitude(); }
+  vec2 sub(float l) const { return p + dir * l; }
+  float within(float eps, float delta, vec2 a_) const {
+    float la = dir * a_;
+    if (la < l0 - eps - delta || la > l1 + eps + delta) return 0;
+    float err = std::max(0.0f, std::fabs(normal * a_ - d) - delta);
     return err < eps;
-    ;
   }
-#if 0
-	float lsq(float eps,float delta,vec2 a) {
-	    float la = dir * a;
-	    if(la<l0-eps-delta || la>l1+eps+delta) return 0;
-	    float eps2 = sqr(eps);
-	    float q = max(0.0,1.0 - sqr(max(0.0,fabs(normal * a - d) - delta))/eps2);
-	    return q;
-	}
-#else
-  float lsq(float eps, float delta, vec2 a) {
-    float la = dir * a;
-    float q = 1.0;
+  float lsq(float eps, float delta, vec2 a_) const {
+    float la = dir * a_;
+    float q_ = 1.0;
     float dl = la - (l0 - delta);
-    if (dl < -eps)
-      return 0;
-    if (dl < 0)
-      q = 1.0 - sqr(dl * dl / (eps * eps));
+    if (dl < -eps) return 0;
+    if (dl < 0) q_ = 1.0 - sqr(dl * dl / (eps * eps));
     float dr = la - (l1 + delta);
-    if (dr > eps)
-      return 0;
-    if (dr > 0)
-      q = 1.0 - sqr(dr * dr / (eps * eps));
-    q *= max(0.0, 1.0 - sqr(max(0.0, fabs(normal * a - d) - delta)) / (eps * eps));
-    return q;
+    if (dr > eps) return 0;
+    if (dr > 0) q_ = 1.0 - sqr(dr * dr / (eps * eps));
+    q_ *= std::max(0.0, 1.0 - sqr(std::max(0.0f, std::fabs(normal * a_ - d) - delta)) /
+                            (eps * eps));
+    return q_;
   }
-#endif
-  float within(float eps, float delta, vec2 a, vec2 b) {
-    float la = dir * a;
+  float within(float eps, float delta, vec2 a_, vec2 b) const {
+    float la = dir * a_;
     float lb = dir * b;
-    float low = min(la, lb);
-    float high = max(la, lb);
-    if (low < l0 - eps - delta || high > l1 + eps + delta)
-      return 0;
-    float erra = max(0.0, fabs(normal * a - d) - delta);
-    if (erra > eps)
-      return 0;
-    float errb = max(0.0, fabs(normal * b - d) - delta);
-    if (errb > eps)
-      return 0;
+    float low = std::min(la, lb);
+    float high = std::max(la, lb);
+    if (low < l0 - eps - delta || high > l1 + eps + delta) return 0;
+    float erra = std::max(0.0f, std::fabs(normal * a_ - d) - delta);
+    if (erra > eps) return 0;
+    float errb = std::max(0.0f, std::fabs(normal * b - d) - delta);
+    if (errb > eps) return 0;
     return (high - low) + 2 * delta;
   }
-  float lsq(float eps, float delta, vec2 a, vec2 b) {
-    float la = dir * a;
+  float lsq(float eps, float delta, vec2 a_, vec2 b) const {
+    float la = dir * a_;
     float lb = dir * b;
-    float low = min(la, lb);
-    float high = max(la, lb);
-    if (low < l0 - eps - delta || high > l1 + eps + delta)
-      return 0;
-    float erra = max(0.0, fabs(normal * a - d) - delta);
-    if (erra > eps)
-      return 0;
-    float errb = max(0.0, fabs(normal * b - d) - delta);
-    if (errb > eps)
-      return 0;
-    float qa = max(0.0, 1.0 - sqr(erra) / sqr(eps));
-    float qb = max(0.0, 1.0 - sqr(errb) / sqr(eps));
+    float low = std::min(la, lb);
+    float high = std::max(la, lb);
+    if (low < l0 - eps - delta || high > l1 + eps + delta) return 0;
+    float erra = std::max(0.0f, std::fabs(normal * a_ - d) - delta);
+    if (erra > eps) return 0;
+    float errb = std::max(0.0f, std::fabs(normal * b - d) - delta);
+    if (errb > eps) return 0;
+    float qa = std::max(0.0f, 1.0f - sqr(erra) / sqr(eps));
+    float qb = std::max(0.0f, 1.0f - sqr(errb) / sqr(eps));
     return qa * qb * ((high - low) + 2 * delta);
   }
 };
 
-typedef Segment Ipoint;
-
-typedef Segment Msource;
+using Ipoint = Segment;
+using Msource = Segment;
 
 static float angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI)
-    d += 2 * M_PI;
-  while (d > M_PI)
-    d -= 2 * M_PI;
-  return fabs(d);
+  while (d < -M_PI) d += 2 * M_PI;
+  while (d > M_PI) d -= 2 * M_PI;
+  return std::fabs(d);
 }
 
 static float unoriented_angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI / 2)
-    d += M_PI;
-  while (d > M_PI / 2)
-    d -= M_PI;
-  return fabs(d);
+  while (d < -M_PI / 2) d += M_PI;
+  while (d > M_PI / 2) d -= M_PI;
+  return std::fabs(d);
 }
 
 struct Region {
-  vector<float> low;
-  vector<float> high;
-  vec2 translation() { return vec2((high(0) + low(0)) / 2.0, (high(1) + low(1)) / 2.0); }
-  float angle() { return (high(2) + low(2)) / 2.0; }
-  float scale() { return (high(3) + low(3)) / 2.0; }
-  vec2 rotation() {
+  std::vector<float> low;
+  std::vector<float> high;
+  vec2 translation() const { return vec2((high[0] + low[0]) / 2.0f, (high[1] + low[1]) / 2.0f); }
+  float angle() const { return (high[2] + low[2]) / 2.0f; }
+  float scale() const { return (high[3] + low[3]) / 2.0f; }
+  vec2 rotation() const {
     float a = angle();
     float s = scale();
-    return vec2(s * cos(a), s * sin(a));
+    return vec2(s * std::cos(a), s * std::sin(a));
   }
-  float tdelta() { return 1.5 * max((high(0) - low(0)) / 2.0, (high(1) - low(1)) / 2.0); }
-  float adelta() { return (high(2) - low(2)) / 2.0; }
-  float smax() { return high(3); }
-  float smin() { return low(3); }
-  float sdelta() { return (high(3) - low(3)) / 2.0; }
+  float tdelta() const {
+    return 1.5f * std::max((high[0] - low[0]) / 2.0f, (high[1] - low[1]) / 2.0f);
+  }
+  float adelta() const { return (high[2] - low[2]) / 2.0f; }
+  float smax() const { return high[3]; }
+  float smin() const { return low[3]; }
+  float sdelta() const { return (high[3] - low[3]) / 2.0f; }
 };
 
 struct IMPair {
   short msource;
   short ipoint;
-  IMPair() {}
-  IMPair(int ms, int ip) {
-    msource = ms;
-    ipoint = ip;
-  }
+  IMPair() : msource(0), ipoint(0) {}
+  IMPair(int ms, int ip) : msource(short(ms)), ipoint(short(ip)) {}
 };
 
-typedef narray<IMPair> Pairs;
-typedef counted<Pairs> CPairs;
-typedef narray<Msource> MsourceStack;
-typedef narray<Ipoint> IpointStack;
+using Pairs = std::vector<IMPair>;
+using CPairs = std::shared_ptr<Pairs>;
 
 class CRastS2D;
 
 struct State {
-  int depth;
-  int generation;
+  int depth{0};
+  int generation{0};
   Region region;
-  CPairs parent_matches;
-  CPairs matches;
-  float lbound;
-  float ubound;
+  CPairs parent_matches{std::make_shared<Pairs>()};
+  CPairs matches{std::make_shared<Pairs>()};
+  float lbound{0.0f};
+  float ubound{0.0f};
 
   void print(FILE *stream = stdout) {
-    fprintf(stream, "<%d [%g:%g] (%g:%g %g:%g) %g:%g %g:%g>", depth, lbound, ubound, region.low(0),
-            region.high(0), region.low(1), region.high(1), region.low(2), region.high(2),
-            region.low(3), region.high(3));
+    std::fprintf(stream, "<%d [%g:%g] (%g:%g %g:%g) %g:%g %g:%g>", depth, lbound, ubound,
+                 region.low[0], region.high[0], region.low[1], region.high[1], region.low[2],
+                 region.high[2], region.low[3], region.high[3]);
   }
 
-  void set(int depth, Region &oregion, CPairs omatches) {
-    this->depth = depth;
+  void set(int depth_, const Region &oregion, CPairs omatches) {
+    this->depth = depth_;
     region = oregion;
-    parent_matches = omatches;
+    parent_matches = std::move(omatches);
   }
 
-  void init(narray<Msource> &msources, narray<Ipoint> &ipoints, CRastS2D &env);
+  void init(std::vector<Msource> &msources, std::vector<Ipoint> &ipoints, CRastS2D &env);
   void eval(CRastS2D &env);
 };
 
-struct CRastS2D : RastS2D {
-  vector<float> splitscale;
+using CState = std::shared_ptr<State>;
 
-  bool final(Region &r, float delta) {
-    for (int i = 0; i < r.low.length(); i++) {
-      float v = (r.high(i) - r.low(i)) * double(splitscale(i));
-      if (v > delta)
-        return false;
+struct CRastS2D : RastS2D {
+  std::vector<float> splitscale{1.0f, 1.0f, 500.0f, 500.0f};
+
+  bool final(const Region &r, float delta) {
+    for (std::size_t i = 0; i < r.low.size(); i++) {
+      float v = (r.high[i] - r.low[i]) * splitscale[i];
+      if (v > delta) return false;
     }
     return true;
   }
 
-  void split(Region &left, Region &right, Region &r) {
-    int dim = r.low.length();
+  void split(Region &left, Region &right, const Region &r) {
+    int dim = int(r.low.size());
     int mi = -1;
     float mv = 0.0;
     for (int i = 0; i < dim; i++) {
-      float v = (r.high(i) - r.low(i)) * splitscale(i);
-      if (v < mv)
-        continue;
+      float v = (r.high[i] - r.low[i]) * splitscale[i];
+      if (v < mv) continue;
       mv = v;
       mi = i;
     }
-    float meanv = (r.high(mi) + r.low(mi)) / 2.0;
+    float meanv = (r.high[mi] + r.low[mi]) / 2.0f;
     left.low = r.low;
-    left.high = r.high.with(mi, meanv);
-    right.low = r.low.with(mi, meanv);
+    left.high = r.high;
+    left.high[mi] = meanv;
+    right.low = r.low;
+    right.low[mi] = meanv;
     right.high = r.high;
   }
 
-  narray<Ipoint> ipoints;
-  narray<float> iorient;
-  narray<Msource> msources;
-  narray<float> mbound;
-  narray<float> mangle;
-  narray<float> mabound;
-  narray<bool> used;
+  std::vector<Ipoint> ipoints;
+  std::vector<Msource> msources;
+  std::vector<bool> used;
 
-  typedef counted<State> CState;
-  heap<CState> queue;
-  narray<CState> results;
+  Heap<CState> queue;
+  std::vector<CState> results;
 
-  bool verbose;
-  float tolerance;
-  float min_q;
-  int maxresults;
-  vector<float> tlow;
-  vector<float> thigh;
-  int generation;
-  bool use_lsq;
-  bool unoriented;
-  float eps;
-  float aeps;
-  float qtolerance;
-  float model_total;
-  bool eps_scales;
-  float ieps;
-
-  CRastS2D() {
-    verbose = false;
-    tolerance = 1e-3;
-    min_q = 3.0;
-    maxresults = 1;
-    splitscale.set(1.0, 1.0, 500.0, 500.0);
-    tlow.set(-1000.0, -1000.0, 0.0, 0.9);
-    thigh.set(1000.0, 1000.0, 2 * M_PI, 1.1);
-    generation = 1;
-    use_lsq = false;
-    unoriented = true;
-    eps = 3.0;
-    aeps = 0.05;
-    qtolerance = 1e-4;
-    eps_scales = 0;
-    ieps = eps;
-  }
+  bool verbose{false};
+  float tolerance{1e-3f};
+  float min_q{3.0f};
+  int maxresults{1};
+  std::vector<float> tlow{-1000.0f, -1000.0f, 0.0f, 0.9f};
+  std::vector<float> thigh{1000.0f, 1000.0f, float(2 * M_PI), 1.1f};
+  int generation{1};
+  bool use_lsq{false};
+  bool unoriented{true};
+  float eps{3.0f};
+  float aeps{0.05f};
+  float qtolerance{1e-4f};
+  float model_total{0.0f};
+  bool eps_scales{false};
+  float ieps{3.0f};
 
   double priority(CState state) {
-    double priority = 1e30;
-    priority = state->ubound + 1e-4 * state->lbound;
-    if (priority >= state->ubound + 1)
-      throw "error";
+    double priority = state->ubound + 1e-4 * state->lbound;
+    if (priority >= state->ubound + 1) throw "error";
     return priority;
   }
 
-  int n_nodes;
-  int n_transforms;
-  int n_distances;
+  int n_nodes{0};
+  int n_transforms{0};
+  int n_distances{0};
 
   void start_match() {
     n_nodes = 0;
@@ -283,22 +230,17 @@ struct CRastS2D : RastS2D {
     n_distances = 0;
     results.clear();
     queue.clear();
-    used.resize(ipoints.length());
-    for (int i = 0; i < used.length(); i++)
-      used[i] = false;
-    CState initial_state;
+    used.assign(ipoints.size(), false);
+    auto initial_state = std::make_shared<State>();
     initial_state->init(msources, ipoints, *this);
-    initial_state->region.low.copyfrom(tlow);
-    initial_state->region.high.copyfrom(thigh);
+    initial_state->region.low = tlow;
+    initial_state->region.high = thigh;
     initial_state->eval(*this);
     initial_state->generation = generation;
     queue.insert(initial_state, initial_state->ubound);
     for (int iter = 0;; iter++) {
-      if (queue.length() < 1)
-        break;
-      CState top;
-      top = queue.extractMax();
-      // top->print(); printf("\n");
+      if (queue.empty()) break;
+      CState top = queue.extractMax();
       if (top->generation != generation) {
         top->eval(*this);
         top->generation = generation;
@@ -306,138 +248,122 @@ struct CRastS2D : RastS2D {
         continue;
       }
       if (verbose && iter % 10000 == 0) {
-        float q = results.length() > 0 ? results[0]->ubound : 0.0;
-        fprintf(stderr, "# %10d result %6g queue %7d", iter, q, 1 + queue.length());
-        fprintf(stderr, "   ");
+        float q = !results.empty() ? results[0]->ubound : 0.0f;
+        std::fprintf(stderr, "# %10d result %6g queue %7zu", iter, q, 1 + queue.length());
+        std::fprintf(stderr, "   ");
         top->print(stderr);
-        fprintf(stderr, "\n");
+        std::fprintf(stderr, "\n");
       }
-#if 0
-		bool done = (1.0-qtolerance)*top->ubound<=top->lbound;
-#else
-      // use scale normalized termination conditions
+      // Use scale-normalized termination conditions.
       float subound = top->ubound / top->region.smin();
       float slbound = top->lbound / top->region.smax();
       bool done = (1.0 - qtolerance) * subound <= slbound;
-#endif
       if (done || final(top->region, tolerance)) {
-        results.push(top);
-        Pairs &matches = top->matches;
-        for (int i = 0; i < matches.length(); i++) {
-          used[matches[i].ipoint] = true;
-        }
+        results.push_back(top);
+        const Pairs &matches = *top->matches;
+        for (const auto &pr : matches) used[pr.ipoint] = true;
         generation++;
-        if (results.length() >= maxresults)
-          return;
+        if (int(results.size()) >= maxresults) return;
         continue;
       }
       Region subregions[2];
       CState substates[2];
       split(subregions[0], subregions[1], top->region);
       for (int i = 0; i < 2; i++) {
+        substates[i] = std::make_shared<State>();
         substates[i]->set(top->depth + 1, subregions[i], top->matches);
         substates[i]->eval(*this);
         substates[i]->generation = generation;
-        if (substates[i]->ubound < min_q)
-          continue;
+        if (substates[i]->ubound < min_q) continue;
         queue.insert(substates[i], priority(substates[i]));
       }
     }
   }
 
-  // defining the model and the image
-
-  void clear_msources() { msources.clear(); }
-  void add_mseg(float x, float y, float x1, float y1) {
-    Msource &ms = msources.push();
+  void clear_msources() override { msources.clear(); }
+  void add_mseg(float x, float y, float x1, float y1) override {
+    Msource ms;
     ms.set(vec2(x, y), vec2(x1, y1));
+    msources.push_back(ms);
   }
 
-  void clear_ipoints() { ipoints.clear(); }
-  void add_iseg(float x, float y, float x1, float y1) {
-    Ipoint &ip = ipoints.push();
+  void clear_ipoints() override { ipoints.clear(); }
+  void add_iseg(float x, float y, float x1, float y1) override {
+    Ipoint ip;
     ip.set(vec2(x, y), vec2(x1, y1));
+    ipoints.push_back(ip);
   }
 
-  // setting match parameters
-
-  void set_maxresults(int n) { maxresults = n; }
-  void set_verbose(bool value) { verbose = value; }
-  void set_eps(float eps, float aeps) {
-    this->eps = eps;
-    this->aeps = aeps;
+  void set_maxresults(int n) override { maxresults = n; }
+  void set_verbose(bool value) override { verbose = value; }
+  void set_eps(float eps_, float aeps_) override {
+    this->eps = eps_;
+    this->aeps = aeps_;
   }
-  void set_scale_eps(bool value, float ieps) {
+  void set_scale_eps(bool value, float ieps_) override {
     this->eps_scales = value;
-    this->ieps = ieps;
+    this->ieps = ieps_;
   }
-  void set_tolerance(float value) {
-    if (value < 1e-3)
-      throw "tolerance too small; would fail to converge occasionally";
+  void set_tolerance(float value) override {
+    if (value < 1e-3) throw "tolerance too small; would fail to converge occasionally";
     tolerance = value;
   }
-  void set_min_q(float min_q) { this->min_q = min_q; }
-  void set_xrange(float x0, float x1) {
-    tlow(0) = x0;
-    thigh(0) = x1;
+  void set_min_q(float min_q_) override { this->min_q = min_q_; }
+  void set_xrange(float x0, float x1) override {
+    tlow[0] = x0;
+    thigh[0] = x1;
   }
-  void set_yrange(float y0, float y1) {
-    tlow(1) = y0;
-    thigh(1) = y1;
+  void set_yrange(float y0, float y1) override {
+    tlow[1] = y0;
+    thigh[1] = y1;
   }
-  void set_arange(float a0, float a1) {
-    tlow(2) = a0;
-    thigh(2) = a1;
+  void set_arange(float a0, float a1) override {
+    tlow[2] = a0;
+    thigh[2] = a1;
   }
-  void set_srange(float s0, float s1) {
-    tlow(3) = s0;
-    thigh(3) = s1;
+  void set_srange(float s0, float s1) override {
+    tlow[3] = s0;
+    thigh[3] = s1;
   }
-  void set_lsq(bool value) { use_lsq = value; }
-  void set_qtolerance(float value) { qtolerance = value; }
-  void set_unoriented(bool value) { unoriented = value; }
-  void match() { start_match(); }
+  void set_lsq(bool value) override { use_lsq = value; }
+  void set_qtolerance(float value) override { qtolerance = value; }
+  void match() override { start_match(); }
 
-  // reading out results
-
-  int nresults() { return results.length(); }
-  float ubound(int rank) { return results[rank]->ubound; }
-  float lbound(int rank) { return results[rank]->lbound; }
-  float translation(int rank, int dim) { return results[rank]->region.translation()[dim]; }
-  float angle(int rank) { return results[rank]->region.angle(); }
-  float scale(int rank) { return results[rank]->region.scale(); }
+  int nresults() override { return int(results.size()); }
+  float ubound(int rank) override { return results[rank]->ubound; }
+  float lbound(int rank) override { return results[rank]->lbound; }
+  float translation(int rank, int dim) override { return results[rank]->region.translation()[dim]; }
+  float angle(int rank) override { return results[rank]->region.angle(); }
+  float scale(int rank) override { return results[rank]->region.scale(); }
 };
 
-void State::init(narray<Msource> &msources, narray<Ipoint> &ipoints, CRastS2D &env) {
+void State::init(std::vector<Msource> &msources, std::vector<Ipoint> &ipoints, CRastS2D &env) {
   depth = 0;
-  region.low.set(0.0, 0.0, 0.0);
-  region.high.set(0.0, 0.0, 0.0);
+  region.low = {0.0f, 0.0f, 0.0f};
+  region.high = {0.0f, 0.0f, 0.0f};
   lbound = 0.0;
-  ubound = msources.length();
-  Pairs &omatches = parent_matches;
+  ubound = float(msources.size());
+  Pairs &omatches = *parent_matches;
   omatches.clear();
-  for (int i = 0; i < msources.length(); i++) {
-    for (int j = 0; j < ipoints.length(); j++) {
-      omatches.push(IMPair(i, j));
+  for (std::size_t i = 0; i < msources.size(); i++) {
+    for (std::size_t j = 0; j < ipoints.size(); j++) {
+      omatches.emplace_back(int(i), int(j));
     }
   }
 
   float total = 0.0;
-  for (int i = 0; i < msources.length(); i++) {
-    total += msources[i].length();
-  }
-  for (int i = 0; i < msources.length(); i++) {
-    msources[i].weight = msources[i].length() / total;
-  }
+  for (auto &m : msources) total += m.length();
+  for (auto &m : msources) m.weight = m.length() / total;
   env.model_total = total;
 }
+
 void State::eval(CRastS2D &env) {
   env.n_nodes++;
-  MsourceStack &msources = env.msources;
-  IpointStack &ipoints = env.ipoints;
-  narray<bool> &used = env.used;
+  std::vector<Msource> &msources = env.msources;
+  std::vector<Ipoint> &ipoints = env.ipoints;
+  std::vector<bool> &used = env.used;
 
-  Pairs &nmatches = matches;
+  Pairs &nmatches = *matches;
   nmatches.clear();
   lbound = 0.0;
   ubound = 0.0;
@@ -450,11 +376,10 @@ void State::eval(CRastS2D &env) {
   float sdelta = region.sdelta();
   float smax = region.smax();
 
-  Pairs &omatches = parent_matches;
-  int n = omatches.length();
+  const Pairs &omatches = *parent_matches;
+  int n = int(omatches.size());
   float eps = env.eps;
-  if (env.eps_scales)
-    eps = min(smax * eps, env.ieps);
+  if (env.eps_scales) eps = std::min(smax * eps, env.ieps);
   float aeps = env.aeps;
   for (int i = 0; i < n;) {
     env.n_transforms++;
@@ -464,7 +389,7 @@ void State::eval(CRastS2D &env) {
     vec2 tmpoint1 = cmul(rotation, msource.q) + translation;
     Segment tmseg(tmpoint0, tmpoint1);
     float tmlength = tmseg.length();
-    float nmsource = max(norm(msource.p), norm(msource.q));
+    float nmsource = std::max(norm(msource.p), norm(msource.q));
     float delta = tdelta + nmsource * smax * adelta + nmsource * sdelta;
 
     float tangle = angle + msource.a;
@@ -473,137 +398,40 @@ void State::eval(CRastS2D &env) {
     float llbound = 0.0;
     float lubound = 0.0;
     for (; i < n; i++) {
-      if (omatches[i].msource != msource_index)
-        break;
+      if (omatches[i].msource != msource_index) break;
       env.n_distances++;
       int ipoint_index = omatches[i].ipoint;
-      if (used[ipoint_index])
-        continue;
+      if (used[ipoint_index]) continue;
       Ipoint &ipoint = ipoints[ipoint_index];
       float adiff;
       if (env.unoriented)
         adiff = unoriented_angle_diff(ipoint.a, tangle);
       else
         adiff = angle_diff(ipoint.a, tangle);
-      if (adiff > aloose)
-        continue;
+      if (adiff > aloose) continue;
       if (!env.use_lsq) {
         float uq = tmseg.within(eps, delta, ipoint.p, ipoint.q);
-        if (uq <= 0.0)
-          continue;
+        if (uq <= 0.0) continue;
         float lq = tmseg.within(eps, 0.0, ipoint.p, ipoint.q);
         lubound += uq;
         llbound += lq;
-        nmatches.push(IMPair(msource_index, ipoint_index));
+        nmatches.emplace_back(msource_index, ipoint_index);
       } else {
         float uq = tmseg.lsq(eps, delta, ipoint.p, ipoint.q);
-        if (uq <= 0.0)
-          continue;
+        if (uq <= 0.0) continue;
         float lq = tmseg.lsq(eps, 0.0, ipoint.p, ipoint.q);
         lubound += uq;
         llbound += lq;
-        nmatches.push(IMPair(msource_index, ipoint_index));
+        nmatches.emplace_back(msource_index, ipoint_index);
       }
     }
-    llbound = min(llbound, tmlength);
-    lubound = min(lubound, tmlength);
-#if 0
-	    // fraction matched per segment
-	    llbound = 100.0*llbound/tmlength*msource.weight;
-	    lubound = 100.0*lubound/tmlength*msource.weight;
-#endif
+    llbound = std::min(llbound, tmlength);
+    lubound = std::min(lubound, tmlength);
     lbound += llbound;
     ubound += lubound;
   }
-#if 0
-	// normalize matches by scale
-	lbound = (lbound * 100.0) / env.model_total / region.smax();
-	ubound = (ubound * 100.0) / env.model_total / region.smin();
-#endif
 }
-} // namespace lumo_crasts2d
+
+}  // namespace lumo_crasts2d
 
 RastS2D *makeRastS2D() { return new lumo_crasts2d::CRastS2D(); }
-
-#ifdef TEST
-
-using namespace lumo_crasts2d;
-
-bool within(float x, float y, float eps) { return fabs(x - y) <= eps; }
-
-struct seg2 {
-  vec2 u, v;
-  seg2() {}
-  seg2(vec2 u, vec2 v) {
-    this->u = u;
-    this->v = v;
-  }
-  seg2 transform(vec2 rot, vec2 tr) { return seg2(cmul(rot, u) + tr, cmul(rot, v) + tr); }
-  seg2 operator+(vec2 tr) { return seg2(u + tr, v + tr); }
-  float angle() { return angleOf(v - u); }
-  float length() { return (v - u).magnitude(); }
-};
-
-int main(int argc, char **argv) {
-  srand48(1);
-  for (int trial = 0; trial < 100; trial++) {
-    bool trivial = false;
-    printf("trial %d\n", trial);
-    float eps = 3.0;
-    float aeps = 100.0;
-    vec2 tr;
-    if (trivial) {
-      tr = vec2(100.001, 100.001);
-    } else {
-      tr = vec2(urand(0.0, 512.0), urand(0.0, 512.0));
-    }
-    float arange = M_PI;
-    float srange = 0.1;
-    float alpha = urand(-arange, arange);
-    float scale = urand(1.0 - srange, 1.0 + srange);
-    vec2 rot = vec2(scale * cos(alpha), scale * sin(alpha));
-    int nmodel = 20;
-    narray<seg2> model;
-    for (int i = 0; i < nmodel; i++) {
-      vec2 u(urand(-100.0, 100.0), urand(-100.0, 100.0));
-      vec2 v(urand(-100.0, 100.0), urand(-100.0, 100.0));
-      model.push(seg2(u, v));
-    }
-    narray<seg2> image;
-    for (int i = 0; i < model.length(); i++) {
-      image.push(model[i].transform(rot, tr));
-    }
-    autodel<CRastS2D> rast = new CRastS2D();
-    if (trivial) {
-      rast->set_xrange(99, 100);
-      rast->set_yrange(99, 100);
-    } else {
-      rast->set_xrange(0, 512);
-      rast->set_yrange(0, 512);
-    }
-    rast->set_arange(-arange, arange);
-    rast->set_srange(1.0 - srange, 1.0 + srange);
-    rast->set_eps(eps, aeps, eps);
-    rast->verbose = 2;
-    for (int i = 0; i < image.length(); i++) {
-      seg2 &s = image[i];
-      rast->add_iseg(s.u[0], s.u[1], s.v[0], s.v[1]);
-    }
-    for (int i = 0; i < model.length(); i++) {
-      seg2 &s = model[i];
-      rast->add_mseg(s.u[0], s.u[1], s.v[0], s.v[1]);
-    }
-    rast->match();
-    assert(rast->nresults() > 0);
-    printf("*** %3d: %8.4f %8.4f %8.4f %8.4f\n"
-           "         %8.4f %8.4f %8.4f %8.4f\n"
-           "    %8.4f %8.4f\n",
-           trial, rast->translation(0, 0), rast->translation(0, 1), rast->angle(0), rast->scale(0),
-           tr[0], tr[1], alpha, scale, rast->ubound(0), rast->lbound(0));
-    assert(within(rast->translation(0, 0), tr[0], 2.0 * eps));
-    assert(within(rast->translation(0, 1), tr[1], 2.0 * eps));
-    // assert(within(rast->angle(0),alpha,0.05));
-    // assert(within(rast->scale(0),scale,0.05));
-  }
-}
-#endif

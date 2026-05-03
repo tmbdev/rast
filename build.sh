@@ -9,6 +9,6 @@ cd _build
 exec make -f ../Makefile \
     VPATH=../src:../tests:../bindings/python \
     SRCDIR=../src \
-    CXX="$CXX -g -Wall -I../src -I../src/colib -O3 -fPIC" \
+    CXX="$CXX -g -Wall -I../src -O3 -fPIC" \
     PYINC="$PYINC" \
     "$@"

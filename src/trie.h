@@ -4,17 +4,9 @@
 #ifndef RAST_SRC_TRIE_H_
 #define RAST_SRC_TRIE_H_
 
-#include "util.h"
-#include "narray.h"
-#include "narray-util.h"
+#include <vector>
 
-#if 0
-inline int clamp(int x, int n) {
-  if (x < 0) return 0;
-  if (x >= n) return n-1;
-  return x;
-}
-#endif
+#include "util.h"
 
 template <class T>
 struct Trie1 {
@@ -22,26 +14,22 @@ struct Trie1 {
     T key;
     float x;
   };
-  float eps;
-  colib::narray<colib::narray<Item *>> buckets;
-  void init(float eps, int w) {
-    this->eps = eps;
-    buckets.resize(int(w / eps) + 1);
+  float eps{0};
+  std::vector<std::vector<Item>> buckets;
+
+  void init(float eps_, int w) {
+    this->eps = eps_;
+    buckets.assign(int(w / eps_) + 1, {});
   }
   void add(float x, T key) {
     int i = int(x / eps);
-    Item &item = buckets(i).push();
-    item.x = x;
-    item.key = key;
+    buckets[i].push_back({key, x});
   }
-  void query(colib::narray<T> &keys, float x0, float x1) {
-    for (int i = clamp(x0 / eps, buckets.dim(0)), n = clamp(x1 / eps, buckets.dim(0)); i <= n;
-         i++) {
-      for (int k = 0, r = buckets(i).length(); k < r; k++) {
-        Item &item = buckets(i)[k];
-        if (item.x >= x0 && item.x < x1) {
-          keys.push(item.key);
-        }
+  void query(std::vector<T> &keys, float x0, float x1) {
+    const int n = clamp(int(x1 / eps), int(buckets.size()));
+    for (int i = clamp(int(x0 / eps), int(buckets.size())); i <= n; i++) {
+      for (const auto &item : buckets[i]) {
+        if (item.x >= x0 && item.x < x1) keys.push_back(item.key);
       }
     }
   }
@@ -53,40 +41,42 @@ struct Trie2 {
     T key;
     float x, y;
   };
-  float eps;
-  colib::narray<colib::narray<Item>> buckets;
-  int xoffset, yoffset;
-  void init(float eps, int xmax, int ymax, int xmin = 0, int ymin = 0) {
+  float eps{0};
+  int xoffset{0};
+  int yoffset{0};
+  int dimX{0};
+  int dimY{0};
+  std::vector<std::vector<Item>> buckets;  // flat: buckets[i * dimY + j]
+
+  void init(float eps_, int xmax, int ymax, int xmin = 0, int ymin = 0) {
     int w = xmax - xmin;
     int h = ymax - ymin;
     this->xoffset = xmin;
     this->yoffset = ymin;
-    this->eps = eps;
-    buckets.resize(int(w / eps) + 1, int(h / eps) + 1);
+    this->eps = eps_;
+    this->dimX = int(w / eps_) + 1;
+    this->dimY = int(h / eps_) + 1;
+    buckets.assign(dimX * dimY, {});
   }
   void add(float x, float y, T key) {
     x -= xoffset;
     y -= yoffset;
     int i = int(x / eps);
     int j = int(y / eps);
-    Item &item = buckets(i, j).push();
-    item.x = x;
-    item.y = y;
-    item.key = key;
+    buckets[i * dimY + j].push_back({key, x, y});
   }
-  void query(colib::narray<T> &keys, float x0, float y0, float x1, float y1) {
+  void query(std::vector<T> &keys, float x0, float y0, float x1, float y1) {
     x0 -= xoffset;
     y0 -= yoffset;
     x1 -= xoffset;
     y1 -= yoffset;
-    for (int i = clamp(int(x0 / eps), buckets.dim(0)), n = clamp(int(x1 / eps), buckets.dim(0));
-         i <= n; i++) {
-      for (int j = clamp(int(y0 / eps), buckets.dim(1)), m = clamp(int(y1 / eps), buckets.dim(1));
-           j <= m; j++) {
-        for (int k = 0, r = buckets(i, j).length(); k < r; k++) {
-          Item &item = buckets(i, j)[k];
+    const int iEnd = clamp(int(x1 / eps), dimX);
+    const int jEnd = clamp(int(y1 / eps), dimY);
+    for (int i = clamp(int(x0 / eps), dimX); i <= iEnd; i++) {
+      for (int j = clamp(int(y0 / eps), dimY); j <= jEnd; j++) {
+        for (const auto &item : buckets[i * dimY + j]) {
           if (item.x >= x0 && item.x < x1 && item.y >= y0 && item.y < y1) {
-            keys.push(item.key);
+            keys.push_back(item.key);
           }
         }
       }
@@ -94,4 +84,4 @@ struct Trie2 {
   }
 };
 
-#endif // RAST_SRC_TRIE_H_
+#endif  // RAST_SRC_TRIE_H_

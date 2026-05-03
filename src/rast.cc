@@ -1,21 +1,39 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
-/*
-  Command line driver program for the RAST library.
-  See the documentation for arguments and parameters.
-*/
+// Command line driver program for the RAST library.
+// See the documentation for arguments and parameters.
 
-#include <stdio.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
 
-#include "misc.h"
-#include "narray.h"
-#include "smartptr.h"
-#include "vec2.h"
-using namespace colib;
-
-#include "util.h"
 #include "rast.h"
+#include "util.h"
+
+namespace {
+
+// Minimal RAII wrapper around a C FILE*. Used by the CLI driver only.
+struct File {
+  FILE *fp{nullptr};
+  File(const char *path, const char *mode) : fp(std::fopen(path, mode)) {
+    if (!fp) throw "open failed";
+  }
+  ~File() { close(); }
+  File(const File &) = delete;
+  File &operator=(const File &) = delete;
+  operator FILE *() const { return fp; }
+  void close() {
+    if (fp) {
+      std::fclose(fp);
+      fp = nullptr;
+    }
+  }
+};
+
+}  // namespace
 
 const char *usage = "Usage: rast subprogram ...\n"
                     "\n"
@@ -52,10 +70,9 @@ const char *usage = "Usage: rast subprogram ...\n"
                     "   minweight maxoffset lsq unoriented\n";
 
 int main_instance(int argc, char **argv) {
-  if (argc != 3)
-    throw "wrong # args";
+  if (argc != 3) throw "wrong # args";
   srand48(igetenv("seed", mkseed()));
-  autodel<InstanceP2D> instance(makeInstanceP2D());
+  std::unique_ptr<InstanceP2D> instance(makeInstanceP2D());
   instance->set_image_size(igetenv("image_size", 512));
   instance->set_model_size(igetenv("model_size", 100));
   instance->set_nclutter(igetenv("nclutter", 50));
@@ -68,72 +85,56 @@ int main_instance(int argc, char **argv) {
   instance->set_srange(fgetenv("minscale", 0.8), fgetenv("maxscale", 1.2));
   instance->generate();
 
-  stdio model(argv[1], "w");
-
+  File model(argv[1], "w");
   for (int i = 0; i < instance->nmodel(); i++) {
     float x, y, a;
     instance->get_model(x, y, a, i);
-    fprintf(model, "%g %g %g %g %g\n", x, y, a, error, aerror);
+    std::fprintf(model, "%g %g %g %g %g\n", x, y, a, error, aerror);
   }
-
   model.close();
 
-  stdio image(argv[2], "w");
-
-  fprintf(image, "# ");
-  for (int i = 0; i < 4; i++)
-    fprintf(image, " %g", instance->get_param(i));
-  fprintf(image, "\n");
-
+  File image(argv[2], "w");
+  std::fprintf(image, "# ");
+  for (int i = 0; i < 4; i++) std::fprintf(image, " %g", instance->get_param(i));
+  std::fprintf(image, "\n");
   for (int i = 0; i < instance->nimage(); i++) {
     float x, y, a;
     instance->get_image(x, y, a, i);
-    fprintf(image, "%g %g %g\n", x, y, a);
+    std::fprintf(image, "%g %g %g\n", x, y, a);
   }
-
   image.close();
   return 0;
 }
 
 int main_align(int argc, char **argv) {
-  if (argc != 3)
-    throw "wrong # args";
-  autodel<AlignmentP2D> align(makeAlignmentP2D());
+  if (argc != 3) throw "wrong # args";
+  std::unique_ptr<AlignmentP2D> align(makeAlignmentP2D());
   align->set_srange(fgetenv("minscale", 0.8), fgetenv("maxscale", 1.2));
   align->set_epsilon(fgetenv("error", 5.0));
   char buf[1000];
-  stdio model(argv[1], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, model))
-      break;
-    if (buf[0] == '#')
-      continue;
+  File model(argv[1], "r");
+  while (std::fgets(buf, sizeof buf, model)) {
+    if (buf[0] == '#') continue;
     float x, y;
-    if (sscanf(buf, "%g %g", &x, &y) != 2)
-      throw "bad format";
+    if (std::sscanf(buf, "%g %g", &x, &y) != 2) throw "bad format";
     align->add_mpoint(x, y);
   }
-  stdio image(argv[2], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, image))
-      break;
-    if (buf[0] == '#')
-      continue;
+  File image(argv[2], "r");
+  while (std::fgets(buf, sizeof buf, image)) {
+    if (buf[0] == '#') continue;
     float x, y;
-    if (sscanf(buf, "%g %g", &x, &y) != 2)
-      throw "bad format";
+    if (std::sscanf(buf, "%g %g", &x, &y) != 2) throw "bad format";
     align->add_ipoint(x, y);
   }
   align->compute();
-  printf("%g    %g %g %g %g\n", align->quality(), align->translation(0), align->translation(1),
-         align->angle(), align->scale());
+  std::printf("%g    %g %g %g %g\n", align->quality(), align->translation(0),
+              align->translation(1), align->angle(), align->scale());
   return 0;
 }
 
 int main_rastp2d(int argc, char **argv) {
-  if (argc != 3)
-    throw "wrong # args";
-  autodel<RastP2D> rast(makeRastP2D());
+  if (argc != 3) throw "wrong # args";
+  std::unique_ptr<RastP2D> rast(makeRastP2D());
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
   rast->set_tolerance(fgetenv("tolerance", 1e-3));
@@ -146,42 +147,33 @@ int main_rastp2d(int argc, char **argv) {
   float eps = fgetenv("eps", 5.0);
   float aeps = fgetenv("aeps", 0.1);
   char buf[1000];
-  stdio model(argv[1], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, model))
-      break;
-    if (buf[0] == '#')
-      continue;
+  File model(argv[1], "r");
+  while (std::fgets(buf, sizeof buf, model)) {
+    if (buf[0] == '#') continue;
     float x, y, a, err = eps, aerr = aeps;
-    int nfields = sscanf(buf, "%g %g %g %g %g", &x, &y, &a, &err, &aerr);
-    if (nfields < 3)
-      throw "bad format";
+    int nfields = std::sscanf(buf, "%g %g %g %g %g", &x, &y, &a, &err, &aerr);
+    if (nfields < 3) throw "bad format";
     rast->add_msource(x, y, a, err, aerr);
   }
-  stdio image(argv[2], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, image))
-      break;
-    if (buf[0] == '#')
-      continue;
+  File image(argv[2], "r");
+  while (std::fgets(buf, sizeof buf, image)) {
+    if (buf[0] == '#') continue;
     float x, y, a;
-    if (sscanf(buf, "%g %g %g", &x, &y, &a) != 3)
-      throw "bad format";
+    if (std::sscanf(buf, "%g %g %g", &x, &y, &a) != 3) throw "bad format";
     rast->add_ipoint(x, y, a);
   }
   rast->match();
   for (int i = 0; i < rast->nresults(); i++) {
-    printf("%d  %g %g   %g %g %g %g\n", i, rast->ubound(i), rast->lbound(i),
-           rast->translation(i, 0), rast->translation(i, 1), rast->angle(i), rast->scale(i));
+    std::printf("%d  %g %g   %g %g %g %g\n", i, rast->ubound(i), rast->lbound(i),
+                rast->translation(i, 0), rast->translation(i, 1), rast->angle(i), rast->scale(i));
   }
-  rast.move(); // don't waste time deallocating
+  rast.release();  // skip deallocation at exit
   return 0;
 }
 
 int main_rasts2d(int argc, char **argv) {
-  if (argc != 3)
-    throw "wrong # args";
-  autodel<RastS2D> rast(makeRastS2D());
+  if (argc != 3) throw "wrong # args";
+  std::unique_ptr<RastS2D> rast(makeRastS2D());
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
   rast->set_xrange(fgetenv("mindx", -1000), fgetenv("maxdx", 1000));
@@ -195,49 +187,37 @@ int main_rasts2d(int argc, char **argv) {
   rast->set_lsq(igetenv("lsq", 0));
   rast->set_tolerance(fgetenv("tolerance", 1e-3));
   rast->set_qtolerance(fgetenv("qtolerance", 1e-2));
-  //!!!float min_q_frac = fgetenv("min_q_frac",0.5);
-  //!!!rast->set_match_mode(sgetenv("match_mode","sub_lsq"));
   char buf[1000];
-  stdio model(argv[1], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, model))
-      break;
-    if (buf[0] == '#')
-      continue;
+  File model(argv[1], "r");
+  while (std::fgets(buf, sizeof buf, model)) {
+    if (buf[0] == '#') continue;
     float x, y, x1, y1;
-    if (sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4)
-      throw "bad format";
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw "bad format";
     rast->add_mseg(x, y, x1, y1);
   }
-  stdio image(argv[2], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, image))
-      break;
-    if (buf[0] == '#')
-      continue;
+  File image(argv[2], "r");
+  while (std::fgets(buf, sizeof buf, image)) {
+    if (buf[0] == '#') continue;
     float x, y, x1, y1;
-    if (sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4)
-      throw "bad format";
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw "bad format";
     rast->add_iseg(x, y, x1, y1);
   }
-  // rast->set_min_q(rast->total_weight()*min_q_frac);
   double start = now();
   rast->match();
   double total = now() - start;
-  fprintf(stderr, "time %g\n", total);
+  std::fprintf(stderr, "time %g\n", total);
   for (int i = 0; i < rast->nresults(); i++) {
-    printf("%d  %g %g   %g %g %g %g\n", i, rast->ubound(i), rast->lbound(i),
-           rast->translation(i, 0), rast->translation(i, 1), rast->angle(i), rast->scale(i));
+    std::printf("%d  %g %g   %g %g %g %g\n", i, rast->ubound(i), rast->lbound(i),
+                rast->translation(i, 0), rast->translation(i, 1), rast->angle(i), rast->scale(i));
   }
-  fflush(stdout);
-  rast.move();
+  std::fflush(stdout);
+  rast.release();
   return 0;
 }
 
 int main_rastss2d(int argc, char **argv) {
-  if (argc != 3)
-    throw "wrong # args";
-  autodel<RastSS2D> rast(makeRastSS2D());
+  if (argc != 3) throw "wrong # args";
+  std::unique_ptr<RastSS2D> rast(makeRastSS2D());
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
   rast->set_xrange(fgetenv("mindx", -1000), fgetenv("maxdx", 1000));
@@ -251,49 +231,37 @@ int main_rastss2d(int argc, char **argv) {
   rast->set_lsq(igetenv("lsq", 0));
   rast->set_tolerance(fgetenv("tolerance", 1e-3));
   rast->set_qtolerance(fgetenv("qtolerance", 1e-2));
-  //!!!float min_q_frac = fgetenv("min_q_frac",0.5);
-  //!!!rast->set_match_mode(sgetenv("match_mode","sub_lsq"));
   char buf[1000];
-  stdio model(argv[1], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, model))
-      break;
-    if (buf[0] == '#' || buf[0] == '\0' || buf[0] == '\n')
-      continue;
+  File model(argv[1], "r");
+  while (std::fgets(buf, sizeof buf, model)) {
+    if (buf[0] == '#' || buf[0] == '\0' || buf[0] == '\n') continue;
     float x, y, x1, y1;
-    if (sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4)
-      continue;
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) continue;
     rast->add_mseg(x, y, x1, y1);
   }
-  stdio image(argv[2], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, image))
-      break;
-    if (buf[0] == '#' || buf[0] == '\0' || buf[0] == '\n')
-      continue;
+  File image(argv[2], "r");
+  while (std::fgets(buf, sizeof buf, image)) {
+    if (buf[0] == '#' || buf[0] == '\0' || buf[0] == '\n') continue;
     float x, y, x1, y1;
-    if (sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4)
-      throw "bad format";
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw "bad format";
     rast->add_iseg(x, y, x1, y1);
   }
-  // rast->set_min_q(rast->total_weight()*min_q_frac);
   double start = now();
   rast->match();
   double total = now() - start;
-  fprintf(stderr, "time %g\n", total);
+  std::fprintf(stderr, "time %g\n", total);
   for (int i = 0; i < rast->nresults(); i++) {
-    printf("%d  %g %g   %g %g %g %g\n", i, rast->ubound(i), rast->lbound(i),
-           rast->translation(i, 0), rast->translation(i, 1), rast->angle(i), rast->scale(i));
+    std::printf("%d  %g %g   %g %g %g %g\n", i, rast->ubound(i), rast->lbound(i),
+                rast->translation(i, 0), rast->translation(i, 1), rast->angle(i), rast->scale(i));
   }
-  fflush(stdout);
-  rast.move();
+  std::fflush(stdout);
+  rast.release();
   return 0;
 }
 
 int main_lines(int argc, char **argv) {
-  if (argc != 2)
-    throw "wrong # args";
-  autodel<LinesP2D> rast(makeLinesP2D());
+  if (argc != 2) throw "wrong # args";
+  std::unique_ptr<LinesP2D> rast(makeLinesP2D());
   bool usegrad = igetenv("usegrad", 0);
   bool useweights = igetenv("useweights", 0);
   rast->set_maxresults(igetenv("maxresults", 1));
@@ -304,42 +272,28 @@ int main_lines(int argc, char **argv) {
   rast->set_minweight(fgetenv("minweight", 0.0));
   rast->set_lsq(igetenv("lsq", 1));
   char buf[1000];
-  stdio points(argv[1], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, points))
-      break;
-    if (buf[0] == '#')
-      continue;
-    if (buf[0] == '\n')
-      continue;
+  File points(argv[1], "r");
+  while (std::fgets(buf, sizeof buf, points)) {
+    if (buf[0] == '#' || buf[0] == '\n') continue;
     float x, y, a = 0, w = 1;
-    int fields = sscanf(buf, "%g %g %g %g", &x, &y, &a, &w);
-    if (usegrad)
-      a = normangleOf(a - M_PI / 2.0);
+    int fields = std::sscanf(buf, "%g %g %g %g", &x, &y, &a, &w);
+    if (usegrad) a = normangleOf(a - M_PI / 2.0);
     if (fields < 2 && angle_error < 2 * M_PI)
       throw "no angles available; set angle_error to >=2pi";
-    if (fields < 2 || fields > 4)
-      throw "bad format";
-    if (!useweights)
-      w = 1.0;
+    if (fields < 2 || fields > 4) throw "bad format";
+    if (!useweights) w = 1.0;
     rast->add_ipoint(x, y, a, w);
   }
   rast->compute();
   for (int i = 0; i < rast->nresults(); i++) {
-#if 1
-    printf("%d  %g   %g %g\n", i, rast->weight(i), rast->angle(i), rast->offset(i));
-#else
-    printf("rank %d quality %g nmatches %d params %g %g\n", i, rast->weight(i), rast->nmatches(i),
-           rast->angle(i), rast->offset(i));
-#endif
+    std::printf("%d  %g   %g %g\n", i, rast->weight(i), rast->angle(i), rast->offset(i));
   }
   return 0;
 }
 
 int main_slines(int argc, char **argv) {
-  if (argc != 2)
-    throw "wrong # args";
-  autodel<LinesS2D> rast(makeLinesS2D());
+  if (argc != 2) throw "wrong # args";
+  std::unique_ptr<LinesS2D> rast(makeLinesS2D());
   bool usegrad = igetenv("usegrad", 0);
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
@@ -351,62 +305,47 @@ int main_slines(int argc, char **argv) {
   rast->set_lsq(igetenv("lsq", 1));
   rast->set_unoriented(igetenv("unoriented", 1));
   char buf[1000];
-  stdio points(argv[1], "r");
-  for (;;) {
-    if (!fgets(buf, sizeof buf, points))
-      break;
-    if (buf[0] == '#')
-      continue;
-    if (buf[0] == '\n')
-      continue;
+  File points(argv[1], "r");
+  while (std::fgets(buf, sizeof buf, points)) {
+    if (buf[0] == '#' || buf[0] == '\n') continue;
     float x, y, x1, y1, a = 0, w = 0;
-    int fields = sscanf(buf, "%g %g %g %g %g %g", &x, &y, &x1, &y1, &a, &w);
-    if (usegrad)
-      a = normangleOf(a - M_PI / 2.0);
+    int fields = std::sscanf(buf, "%g %g %g %g %g %g", &x, &y, &x1, &y1, &a, &w);
+    if (usegrad) a = normangleOf(a - M_PI / 2.0);
     if (fields < 4 && angle_error < 2 * M_PI)
       throw "no angles available; set angle_error to >=2pi";
-    if (fields < 4 || fields > 6)
-      throw "bad format";
-    if (w == 0)
-      w = sqrt(sqr(x1 - x) + sqr(y1 - y));
+    if (fields < 4 || fields > 6) throw "bad format";
+    if (w == 0) w = std::sqrt(sqr(x1 - x) + sqr(y1 - y));
     rast->add_iseg(x, y, x1, y1, a, w);
   }
   double start = now();
   rast->compute();
   double total = now() - start;
-  fprintf(stderr, "time %g\n", total);
+  std::fprintf(stderr, "time %g\n", total);
   for (int i = 0; i < rast->nresults(); i++) {
-    printf("%d  %g   %g %g\n", i, rast->weight(i), rast->angle(i), rast->offset(i));
+    std::printf("%d  %g   %g %g\n", i, rast->weight(i), rast->angle(i), rast->offset(i));
   }
-  fprintf(stderr, "# done\n");
-  rast.move();
+  std::fprintf(stderr, "# done\n");
+  rast.release();
   return 0;
 }
 
 int main(int argc, char **argv) {
   try {
     if (argc < 2) {
-      fprintf(stderr, "%s", usage);
-      exit(255);
+      std::fprintf(stderr, "%s", usage);
+      std::exit(255);
     }
-    if (!strcmp(argv[1], "instance"))
-      return main_instance(argc - 1, argv + 1);
-    if (!strcmp(argv[1], "align"))
-      return main_align(argc - 1, argv + 1);
-    if (!strcmp(argv[1], "lines"))
-      return main_lines(argc - 1, argv + 1);
-    if (!strcmp(argv[1], "slines"))
-      return main_slines(argc - 1, argv + 1);
-    if (!strcmp(argv[1], "rast"))
-      return main_rastp2d(argc - 1, argv + 1);
-    if (!strcmp(argv[1], "srast"))
-      return main_rasts2d(argc - 1, argv + 1);
-    if (!strcmp(argv[1], "ssrast"))
-      return main_rastss2d(argc - 1, argv + 1);
-    fprintf(stderr, "unknown subprogram\n");
-    exit(1);
+    if (!std::strcmp(argv[1], "instance")) return main_instance(argc - 1, argv + 1);
+    if (!std::strcmp(argv[1], "align")) return main_align(argc - 1, argv + 1);
+    if (!std::strcmp(argv[1], "lines")) return main_lines(argc - 1, argv + 1);
+    if (!std::strcmp(argv[1], "slines")) return main_slines(argc - 1, argv + 1);
+    if (!std::strcmp(argv[1], "rast")) return main_rastp2d(argc - 1, argv + 1);
+    if (!std::strcmp(argv[1], "srast")) return main_rasts2d(argc - 1, argv + 1);
+    if (!std::strcmp(argv[1], "ssrast")) return main_rastss2d(argc - 1, argv + 1);
+    std::fprintf(stderr, "unknown subprogram\n");
+    std::exit(1);
   } catch (const char *error) {
-    fprintf(stderr, "error: %s\n", error);
-    exit(2);
+    std::fprintf(stderr, "error: %s\n", error);
+    std::exit(2);
   }
 }
