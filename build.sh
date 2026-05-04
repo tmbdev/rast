@@ -28,12 +28,7 @@ WARNINGS="$WARNINGS -Wold-style-cast -Wcast-align -Woverloaded-virtual"
 #                         expressions on virtually every call site.
 # Both are mechanical to fix but invasive. Re-enable when addressed.
 
-COMMON="-std=c++20 $WARNINGS -fPIC"
-# -fvisibility=hidden -fvisibility-inlines-hidden are deferred: with -flto in
-# the ultra config, hidden visibility causes the linker to discard the
-# make*() factories from librast.a before reaching rast/rast-test/main(). The
-# proper fix is a PROJECT_EXPORT macro on each public symbol; until that
-# lands, default visibility keeps all three configs linkable.
+COMMON="-std=c++20 $WARNINGS -fPIC -fvisibility=hidden -fvisibility-inlines-hidden"
 
 case "$BUILD_TYPE" in
 debug)
