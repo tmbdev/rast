@@ -13,13 +13,6 @@
 
 namespace lumo_calignmentp2d {
 
-// Category: Debug and diagnostic setting (per cpp_guidelines.md "Globals,
-// Statics, and Initialization Order"). Constant-initialized from the
-// `verbose` env-var at process startup, then read-only.
-// Thread-safety: safe for concurrent reads after main() begins; do not
-// mutate at runtime.
-bool verbose = igetenv("verbose", 1);
-
 inline int urand48() { return std::abs(int(lrand48())); }
 
 // Category: Configuration option. Constant-initialized at startup, read-only
@@ -132,10 +125,10 @@ struct CAlignmentP2D : AlignmentP2D {
   }
   void set_epsilon(float e) override { eps = e; }
 
-  float quality() override { return solution.quality; }
-  float translation(int dim) override { return solution.translation[dim]; }
-  float angle() override { return normangleOf(angleOf(solution.rotation)); }
-  float scale() override { return norm(solution.rotation); }
+  float quality() const override { return solution.quality; }
+  float translation(int dim) const override { return solution.translation[dim]; }
+  float angle() const override { return normangleOf(angleOf(solution.rotation)); }
+  float scale() const override { return norm(solution.rotation); }
 };
 
 }  // namespace lumo_calignmentp2d

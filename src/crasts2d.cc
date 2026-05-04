@@ -332,12 +332,12 @@ struct CRastS2D : RastS2D {
   void set_qtolerance(float value) override { qtolerance = value; }
   void match() override { start_match(); }
 
-  int nresults() override { return int(results.size()); }
-  float ubound(int rank) override { return results[rank]->ubound; }
-  float lbound(int rank) override { return results[rank]->lbound; }
-  float translation(int rank, int dim) override { return results[rank]->region.translation()[dim]; }
-  float angle(int rank) override { return results[rank]->region.angle(); }
-  float scale(int rank) override { return results[rank]->region.scale(); }
+  int nresults() const override { return int(results.size()); }
+  float ubound(int rank) const override { return results[rank]->ubound; }
+  float lbound(int rank) const override { return results[rank]->lbound; }
+  float translation(int rank, int dim) const override { return results[rank]->region.translation()[dim]; }
+  float angle(int rank) const override { return results[rank]->region.angle(); }
+  float scale(int rank) const override { return results[rank]->region.scale(); }
 };
 
 void State::init(std::vector<Msource> &msources, std::vector<Ipoint> &ipoints, CRastS2D &env) {

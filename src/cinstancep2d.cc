@@ -36,7 +36,7 @@ struct CInstanceP2D : InstanceP2D {
   int image_size{512};
   int model_size{100};
 
-  int nclutter{50};
+  int nclutter{50};      // configurable via set_nclutter() / CLI nclutter env-var
   int nmodel_total{20};
   int nmodel_unoccluded{10};
   float error{5.0f};
@@ -51,9 +51,9 @@ struct CInstanceP2D : InstanceP2D {
   std::vector<Msource> msources;
   std::vector<Ipoint> ipoints;
 
-  CInstanceP2D() { nclutter = igetenv("nclutter", 50); }
+  CInstanceP2D() = default;
 
-  float get_param(int i) override {
+  float get_param(int i) const override {
     switch (i) {
       case 0: return translation[0];
       case 1: return translation[1];
@@ -106,15 +106,15 @@ struct CInstanceP2D : InstanceP2D {
     maxscale = max;
   }
 
-  int nimage() override { return int(ipoints.size()); }
-  void get_image(float &x, float &y, float &a, int i) override {
+  int nimage() const override { return int(ipoints.size()); }
+  void get_image(float &x, float &y, float &a, int i) const override {
     x = ipoints[i].p[0];
     y = ipoints[i].p[1];
     a = ipoints[i].a;
   }
 
-  int nmodel() override { return int(msources.size()); }
-  void get_model(float &x, float &y, float &a, int i) override {
+  int nmodel() const override { return int(msources.size()); }
+  void get_model(float &x, float &y, float &a, int i) const override {
     x = msources[i].p[0];
     y = msources[i].p[1];
     a = msources[i].a;

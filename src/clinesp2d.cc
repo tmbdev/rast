@@ -274,11 +274,11 @@ struct CLinesP2D : LinesP2D {
   void set_breakpenalty(float, float) override {}
   void set_verbose(int value) override { verbose = value; }
 
-  int nresults() override { return int(results.size()); }
-  int nmatches(int i) override { return int(results[i]->matches->size()); }
-  float weight(int i) override { return results[i]->weight; }
-  float angle(int i) override { return results[i]->region.thm; }
-  float offset(int i) override { return results[i]->region.rm; }
+  int nresults() const override { return int(results.size()); }
+  int nmatches(int i) const override { return int(results[i]->matches->size()); }
+  float weight(int i) const override { return results[i]->weight; }
+  float angle(int i) const override { return results[i]->region.thm; }
+  float offset(int i) const override { return results[i]->region.rm; }
 };
 
 }  // namespace lumo_clinesp2d
