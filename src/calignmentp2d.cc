@@ -13,14 +13,20 @@
 
 namespace lumo_calignmentp2d {
 
-// Diagnostic flag: parsed once at startup from the `verbose` env-var; read-only
-// thereafter. Falls under the "Debug and diagnostic settings" carve-out from
-// the project's globals rule.
+// Category: Debug and diagnostic setting (per cpp_guidelines.md "Globals,
+// Statics, and Initialization Order"). Constant-initialized from the
+// `verbose` env-var at process startup, then read-only.
+// Thread-safety: safe for concurrent reads after main() begins; do not
+// mutate at runtime.
 bool verbose = igetenv("verbose", 1);
 
 inline int urand48() { return std::abs(int(lrand48())); }
 
-static bool use_trie = true;  // build-time switch; read-only at runtime
+// Category: Configuration option. Constant-initialized at startup, read-only
+// thereafter. Toggles whether evaluateAlignment0 uses the spatial trie or
+// falls back to the O(n) scan; intended only for debugging the trie.
+// Thread-safety: safe for concurrent reads; do not mutate at runtime.
+static bool use_trie = true;
 
 struct CAlignmentP2D : AlignmentP2D {
   float eps{0.0f};
