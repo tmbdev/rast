@@ -19,7 +19,7 @@ LIBRAST=cedges.o calignmentp2d.o cinstancep2d.o \
 	clinesp2d.o cliness2d.o crastp2d.o crastss2d.o crasts2d.o \
 	crastrs2d.o
 librast.a: $(LIBRAST)
-	ar cr $@ $^
+	$(AR) cr $@ $^
 
 # cedges.cc is legacy code that doesn't conform to the strict warning set
 # (heavy float<->double mixing, internal shadowing). Compile it without

@@ -30,6 +30,7 @@ WARNINGS="$WARNINGS -Wold-style-cast -Wcast-align -Woverloaded-virtual"
 
 COMMON="-std=c++20 $WARNINGS -fPIC -fvisibility=hidden -fvisibility-inlines-hidden"
 
+AR_OVERRIDE="ar"
 case "$BUILD_TYPE" in
 debug)
     CONFIG_FLAGS="-O0 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG -Werror"
@@ -38,12 +39,11 @@ production)
     CONFIG_FLAGS="-O2 -g"
     ;;
 ultra)
-    # -flto deferred: librast.a is built with plain `ar`, which doesn't index
-    # LTO bitcode. The linker then can't find make*() factories when linking
-    # rast/rast-test against the archive. Re-enable when the Makefile uses
-    # gcc-ar / gcc-ranlib for librast.a (or the project moves to a single
-    # link-time .o list).
-    CONFIG_FLAGS="-O3 -DNDEBUG"
+    # -flto produces LTO bitcode in each .o; librast.a must therefore be
+    # built with gcc-ar so the archive index covers the bitcode. The linker
+    # then resolves make*() factories correctly.
+    CONFIG_FLAGS="-O3 -DNDEBUG -flto"
+    AR_OVERRIDE="gcc-ar"
     ;;
 esac
 
@@ -54,5 +54,6 @@ exec make -f ../../Makefile \
     VPATH=../../src:../../tests:../../bindings/python \
     SRCDIR=../../src \
     CXX="$CXX $COMMON $CONFIG_FLAGS -I../../src" \
+    AR="$AR_OVERRIDE" \
     PYINC="$PYINC" \
     "$@"
