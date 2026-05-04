@@ -20,6 +20,8 @@ inline T sqr(T x) {
 
 constexpr float kPi = static_cast<float>(M_PI);
 constexpr float kTwoPi = 2.0f * kPi;
+constexpr float kHalfPi = 0.5f * kPi;
+constexpr float kQuarterPi = 0.25f * kPi;
 
 inline float normangleOf(float a) {
   while (a < 0) a += kTwoPi;

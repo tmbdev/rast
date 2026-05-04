@@ -30,15 +30,15 @@ struct Msource {
 
 static float angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI) d += 2 * M_PI;
-  while (d > M_PI) d -= 2 * M_PI;
+  while (d < -kPi) d += kTwoPi;
+  while (d > kPi) d -= kTwoPi;
   return std::fabs(d);
 }
 
 static float unoriented_angle_diff(float a1, float a2) {
   float d = a1 - a2;
-  while (d < -M_PI / 2) d += M_PI;
-  while (d > M_PI / 2) d -= M_PI;
+  while (d < -kHalfPi) d += kPi;
+  while (d > kHalfPi) d -= kPi;
   return std::fabs(d);
 }
 
@@ -155,7 +155,7 @@ struct CRastP2D : RastP2D {
   float min_q{3.0f};
   int maxresults{1};
   std::vector<float> tlow{-1000.0f, -1000.0f, 0.0f, 0.9f};
-  std::vector<float> thigh{1000.0f, 1000.0f, float(2 * M_PI), 1.1f};
+  std::vector<float> thigh{1000.0f, 1000.0f, float(kTwoPi), 1.1f};
   int generation{1};
   bool use_lsq{false};
   bool unoriented{true};

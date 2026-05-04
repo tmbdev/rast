@@ -73,15 +73,15 @@ struct LineRegion {
   float adist(float a, bool unoriented) const {
     float diff = a - thm;
     if (unoriented) {
-      while (diff < -M_PI / 4) diff += M_PI / 2;
-      while (diff > M_PI / 4) diff -= M_PI / 2;
+      while (diff < -kQuarterPi) diff += kHalfPi;
+      while (diff > kQuarterPi) diff -= kHalfPi;
       diff = std::fabs(diff);
       diff -= therr;
       if (diff < 0) return 0.0;
       return diff;
     } else {
-      while (diff < -M_PI / 2) diff += M_PI;
-      while (diff > M_PI / 2) diff -= M_PI;
+      while (diff < -kHalfPi) diff += kPi;
+      while (diff > kHalfPi) diff -= kPi;
       diff = std::fabs(diff);
       diff -= therr;
       if (diff < 0) return 0.0;
@@ -195,9 +195,9 @@ struct CLinesP2D : LinesP2D {
       auto initial = std::make_shared<State>();
       seedAll(*initial->matches);
       if (unoriented)
-        initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, 0.0, maxoffset);
+        initial->region.set(i * kQuarterPi, (i + 1) * kQuarterPi, 0.0, maxoffset);
       else
-        initial->region.set(i * M_PI / 4, (i + 1) * M_PI / 4, -maxoffset, maxoffset);
+        initial->region.set(i * kQuarterPi, (i + 1) * kQuarterPi, -maxoffset, maxoffset);
       filter(initial);
       queue.insert(initial, initial->weight);
     }

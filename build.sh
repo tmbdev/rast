@@ -21,12 +21,15 @@ esac
 WARNINGS="-Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor"
 WARNINGS="$WARNINGS -Wold-style-cast -Wcast-align -Woverloaded-virtual"
 # Two warnings from the guideline's required set are intentionally omitted
-# pending a separate cleanup sweep:
+# pending separate cleanup sweeps:
 #   -Wconversion       -- hundreds of int<->size_t diagnostics across the
 #                         matchers (each `for (int i = 0; i < v.size(); i++)`).
-#   -Wdouble-promotion -- M_PI is a double; the matchers pass it into float
-#                         expressions on virtually every call site.
-# Both are mechanical to fix but invasive. Re-enable when addressed.
+#   -Wdouble-promotion -- the matchers do most arithmetic in float but use
+#                         double literals (0.0 / 1.0); each std::max(0.0,...)
+#                         and `q == 0.0` triggers it. M_PI uses already
+#                         migrated to the kPi/kHalfPi/kQuarterPi/kTwoPi
+#                         constants in util.h, but the literal-suffix sweep
+#                         is still pending.
 
 COMMON="-std=c++20 $WARNINGS -fPIC -fvisibility=hidden -fvisibility-inlines-hidden"
 
