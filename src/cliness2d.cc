@@ -259,4 +259,6 @@ struct CLinesS2D : LinesS2D {
 
 }  // namespace lumo_cliness2d
 
-LinesS2D *makeLinesS2D() { return new lumo_cliness2d::CLinesS2D(); }
+std::unique_ptr<LinesS2D> makeLinesS2D() {
+  return std::make_unique<lumo_cliness2d::CLinesS2D>();
+}

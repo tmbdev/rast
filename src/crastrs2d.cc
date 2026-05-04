@@ -418,4 +418,6 @@ void State::eval(CRastRS2D &env) {
 
 }  // namespace lumo_crastrs2d
 
-RastRS2D *makeRastRS2D() { return new lumo_crastrs2d::CRastRS2D(); }
+std::unique_ptr<RastRS2D> makeRastRS2D() {
+  return std::make_unique<lumo_crastrs2d::CRastRS2D>();
+}

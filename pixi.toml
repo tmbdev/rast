@@ -8,11 +8,11 @@ platforms = ["linux-64"]
 [dependencies]
 cxx-compiler = "*"
 make = "*"
-swig = "3.0.*"
 python = ">=3.9"
 numpy = "*"
 clang-format = "*"
 doctest = "*"
+pybind11 = "*"
 
 # Make the SWIG-built rast module importable from `pixi run python ...`.
 [activation.env]

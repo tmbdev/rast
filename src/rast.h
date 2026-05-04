@@ -4,9 +4,24 @@
 #ifndef RAST_SRC_RAST_H_
 #define RAST_SRC_RAST_H_
 
+#include <memory>
+
+// Macro: declare an abstract interface (virtual destructor + deleted
+// copy/move). Used to keep each interface body terse and consistent
+// per the project's coding guidelines.
+#define RAST_INTERFACE(NAME)                          \
+  NAME() = default;                                   \
+  virtual ~NAME() = default;                          \
+  NAME(const NAME &) = delete;                        \
+  NAME &operator=(const NAME &) = delete;             \
+  NAME(NAME &&) = delete;                             \
+  NAME &operator=(NAME &&) = delete
+
 // line finding using the RAST algorithm
 
 struct LinesP2D {
+  RAST_INTERFACE(LinesP2D);
+
   // parameters
   virtual void set_maxresults(int n) = 0;
   virtual void set_breakpenalty(float eps, float cost) = 0;
@@ -32,15 +47,15 @@ struct LinesP2D {
   virtual float angle(int rank) = 0;
   virtual float offset(int rank) = 0;
   virtual int nmatches(int rank) = 0;
-
-  virtual ~LinesP2D() {}
 };
 
-LinesP2D *makeLinesP2D();
+std::unique_ptr<LinesP2D> makeLinesP2D();
 
 // line finding using the RAST algorithm
 
 struct LinesS2D {
+  RAST_INTERFACE(LinesS2D);
+
   // parameters
   virtual void set_maxresults(int n) = 0;
   virtual void set_breakpenalty(float eps, float cost) = 0;
@@ -64,15 +79,15 @@ struct LinesS2D {
   virtual float weight(int rank) = 0;
   virtual float angle(int rank) = 0;
   virtual float offset(int rank) = 0;
-
-  virtual ~LinesS2D() {}
 };
 
-LinesS2D *makeLinesS2D();
+std::unique_ptr<LinesS2D> makeLinesS2D();
 
 // generate instances of the 2D recognition problem
 
 struct InstanceP2D {
+  RAST_INTERFACE(InstanceP2D);
+
   // parameters
   virtual void set_image_size(int r) = 0;
   virtual void set_model_size(int r) = 0;
@@ -81,7 +96,7 @@ struct InstanceP2D {
   virtual void set_nmodel_unoccluded(int v) = 0;
   virtual void set_error(float v) = 0;
   virtual void set_aerror(float v) = 0;
-  virtual void set_srange(float min, float max) = 0; // range of scales
+  virtual void set_srange(float min, float max) = 0;  // range of scales
 
   // generate instance
   virtual void generate() = 0;
@@ -94,15 +109,16 @@ struct InstanceP2D {
   virtual int nmodel() = 0;
   virtual void get_model(float &x, float &y, float &a, int i) = 0;
 
-  virtual ~InstanceP2D() {}
   virtual float get_param(int i) = 0;
 };
 
-InstanceP2D *makeInstanceP2D();
+std::unique_ptr<InstanceP2D> makeInstanceP2D();
 
 // point matching using the RAST algorithm
 
 struct RastP2D {
+  RAST_INTERFACE(RastP2D);
+
   // parameters
   virtual void set_maxresults(int n) = 0;
   virtual void set_verbose(bool value) = 0;
@@ -110,8 +126,8 @@ struct RastP2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0; // range of angles
-  virtual void set_srange(float s0, float s1) = 0; // range of scales
+  virtual void set_arange(float a0, float a1) = 0;  // range of angles
+  virtual void set_srange(float s0, float s1) = 0;  // range of scales
   virtual void set_lsq(bool value) = 0;
   virtual void set_unoriented(bool value) = 0;
 
@@ -133,15 +149,15 @@ struct RastP2D {
   virtual float translation(int rank, int dim) = 0;
   virtual float angle(int rank) = 0;
   virtual float scale(int rank) = 0;
-
-  virtual ~RastP2D() {}
 };
 
-RastP2D *makeRastP2D();
+std::unique_ptr<RastP2D> makeRastP2D();
 
 // line segment matching using the RAST algorithm
 
 struct RastS2D {
+  RAST_INTERFACE(RastS2D);
+
   // parameters
   virtual void set_maxresults(int n) = 0;
   virtual void set_verbose(bool value) = 0;
@@ -153,8 +169,8 @@ struct RastS2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0; // range of angles
-  virtual void set_srange(float s0, float s1) = 0; // range of scales
+  virtual void set_arange(float a0, float a1) = 0;  // range of angles
+  virtual void set_srange(float s0, float s1) = 0;  // range of scales
 
   // set model segments
   virtual void clear_msources() = 0;
@@ -174,15 +190,15 @@ struct RastS2D {
   virtual float translation(int rank, int dim) = 0;
   virtual float angle(int rank) = 0;
   virtual float scale(int rank) = 0;
-
-  virtual ~RastS2D() {}
 };
 
-RastS2D *makeRastS2D();
+std::unique_ptr<RastS2D> makeRastS2D();
 
 // line segment matching using the RAST algorithm and sampling
 
 struct RastSS2D {
+  RAST_INTERFACE(RastSS2D);
+
   // parameters
   virtual void set_maxresults(int n) = 0;
   virtual void set_verbose(bool value) = 0;
@@ -193,8 +209,8 @@ struct RastSS2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0; // range of angles
-  virtual void set_srange(float s0, float s1) = 0; // range of scales
+  virtual void set_arange(float a0, float a1) = 0;  // range of angles
+  virtual void set_srange(float s0, float s1) = 0;  // range of scales
 
   // set model segments
   virtual void clear_msources() = 0;
@@ -214,15 +230,15 @@ struct RastSS2D {
   virtual float translation(int rank, int dim) = 0;
   virtual float angle(int rank) = 0;
   virtual float scale(int rank) = 0;
-
-  virtual ~RastSS2D() {}
 };
 
-RastSS2D *makeRastSS2D();
+std::unique_ptr<RastSS2D> makeRastSS2D();
 
 // line+blob segment matching using the RAST algorithm and sampling
 
 struct RastRS2D {
+  RAST_INTERFACE(RastRS2D);
+
   // parameters
   virtual void set_maxresults(int n) = 0;
   virtual void set_verbose(bool value) = 0;
@@ -233,8 +249,8 @@ struct RastRS2D {
   virtual void set_min_q(float min_q) = 0;
   virtual void set_xrange(float x0, float x1) = 0;
   virtual void set_yrange(float y0, float y1) = 0;
-  virtual void set_arange(float a0, float a1) = 0; // range of angles
-  virtual void set_srange(float s0, float s1) = 0; // range of scales
+  virtual void set_arange(float a0, float a1) = 0;  // range of angles
+  virtual void set_srange(float s0, float s1) = 0;  // range of scales
 
   // set model segments
   virtual void clear_msources() = 0;
@@ -254,18 +270,18 @@ struct RastRS2D {
   virtual float translation(int rank, int dim) = 0;
   virtual float angle(int rank) = 0;
   virtual float scale(int rank) = 0;
-
-  virtual ~RastRS2D() {}
 };
 
-RastRS2D *makeRastRS2D();
+std::unique_ptr<RastRS2D> makeRastRS2D();
 
 // point matching using alignment
 
 struct AlignmentP2D {
+  RAST_INTERFACE(AlignmentP2D);
+
   // set parameters
   virtual void set_epsilon(float e) = 0;
-  virtual void set_srange(float min, float max) = 0; // range of scales
+  virtual void set_srange(float min, float max) = 0;  // range of scales
 
   // set model points
   virtual void clear_mpoints() = 0;
@@ -283,10 +299,8 @@ struct AlignmentP2D {
   virtual float translation(int dim) = 0;
   virtual float angle() = 0;
   virtual float scale() = 0;
-
-  virtual ~AlignmentP2D() {}
 };
 
-AlignmentP2D *makeAlignmentP2D();
+std::unique_ptr<AlignmentP2D> makeAlignmentP2D();
 
-#endif // RAST_SRC_RAST_H_
+#endif  // RAST_SRC_RAST_H_

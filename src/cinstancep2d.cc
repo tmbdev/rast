@@ -122,4 +122,6 @@ struct CInstanceP2D : InstanceP2D {
 
 }  // namespace lumo_cinstancep2d
 
-InstanceP2D *makeInstanceP2D() { return new lumo_cinstancep2d::CInstanceP2D(); }
+std::unique_ptr<InstanceP2D> makeInstanceP2D() {
+  return std::make_unique<lumo_cinstancep2d::CInstanceP2D>();
+}

@@ -134,4 +134,6 @@ struct CAlignmentP2D : AlignmentP2D {
 
 }  // namespace lumo_calignmentp2d
 
-AlignmentP2D *makeAlignmentP2D() { return new lumo_calignmentp2d::CAlignmentP2D(); }
+std::unique_ptr<AlignmentP2D> makeAlignmentP2D() {
+  return std::make_unique<lumo_calignmentp2d::CAlignmentP2D>();
+}

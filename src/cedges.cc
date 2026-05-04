@@ -54,6 +54,8 @@ Parameters (via environment):
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+
+#include <memory>
 #include <string.h>
 #include <unistd.h>
 
@@ -1020,13 +1022,13 @@ struct CEdges : EdgeDetector {
     read_pnm(bimage, file);
     image.copy(bimage);
   }
-  void load_pnm(char *file) {
+  void load_pnm(const char *file) {
     ByteArray bimage;
     read_pnm(bimage, file);
     image.copy(bimage);
   }
   void save_pnm(FILE *file) { write_pnm(file, edges); }
-  void save_pnm(char *file) { write_pnm(file, edges); }
+  void save_pnm(const char *file) { write_pnm(file, edges); }
   int dim(int i) { return image.dim(i); }
   void set_image(unsigned char *p, int w, int h) {
     image.resize(w, h);
@@ -1179,7 +1181,7 @@ struct CEdges : EdgeDetector {
   }
 };
 
-EdgeDetector *makeEdgeDetector() { return new CEdges(); }
+std::unique_ptr<EdgeDetector> makeEdgeDetector() { return std::make_unique<CEdges>(); }
 } // namespace iupr_cedges
 
 #ifdef MAIN

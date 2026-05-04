@@ -4,14 +4,23 @@
 #ifndef RAST_SRC_CEDGES_H_
 #define RAST_SRC_CEDGES_H_
 
+#include <memory>
+
 namespace iupr_cedges {
 struct EdgeDetector {
+  EdgeDetector() = default;
+  virtual ~EdgeDetector() = default;
+  EdgeDetector(const EdgeDetector &) = delete;
+  EdgeDetector &operator=(const EdgeDetector &) = delete;
+  EdgeDetector(EdgeDetector &&) = delete;
+  EdgeDetector &operator=(EdgeDetector &&) = delete;
+
   virtual void set_gauss(float sx, float sy) = 0;
   virtual void set_noise(float frac, float low, float high) = 0;
   virtual void set_poly(float minlength, float maxdist) = 0;
   virtual void clear() = 0;
-  virtual void load_pnm(char *file) = 0;
-  virtual void save_pnm(char *file) = 0;
+  virtual void load_pnm(const char *file) = 0;
+  virtual void save_pnm(const char *file) = 0;
   virtual int dim(int i) = 0;
   virtual void set_image(unsigned char *p, int w, int h) = 0;
   virtual void set_pixmap(unsigned char *p, int w, int h) = 0;
@@ -26,10 +35,9 @@ struct EdgeDetector {
   virtual int nsegments() = 0;
   virtual void segment(int i, float &x0, float &y0, float &x1, float &y1, float &angle,
                        float &magnitude, int &n) = 0;
-  virtual ~EdgeDetector() {}
 };
 
-EdgeDetector *makeEdgeDetector();
-} // namespace iupr_cedges
+std::unique_ptr<EdgeDetector> makeEdgeDetector();
+}  // namespace iupr_cedges
 
-#endif // RAST_SRC_CEDGES_H_
+#endif  // RAST_SRC_CEDGES_H_

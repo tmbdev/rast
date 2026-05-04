@@ -335,4 +335,6 @@ void State::eval(CRastP2D &env) {
 
 }  // namespace lumo_crastp2d
 
-RastP2D *makeRastP2D() { return new lumo_crastp2d::CRastP2D(); }
+std::unique_ptr<RastP2D> makeRastP2D() {
+  return std::make_unique<lumo_crastp2d::CRastP2D>();
+}
