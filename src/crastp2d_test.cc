@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "rast.h"
+#include "util.h"
 
 namespace {
 
@@ -24,7 +25,7 @@ std::unique_ptr<RastP2D> makeMatcher() {
   r->set_min_q(3.0f);
   r->set_xrange(-1000, 1000);
   r->set_yrange(-1000, 1000);
-  r->set_arange(0.0f, 2 * M_PI);
+  r->set_arange(0.0f, kTwoPi);
   r->set_srange(0.8f, 1.2f);
   r->set_lsq(false);
   r->set_unoriented(true);

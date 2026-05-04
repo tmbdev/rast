@@ -48,8 +48,8 @@ struct LineRegion {
     thm = (th0_ + th1_) / 2;
     uxm = std::cos(thm);
     uym = std::sin(thm);
-    double factor = std::cos((th1_ - th0_) / 2);
-    this->rm = std::max(0.0, r0_ * factor);
+    float factor = std::cos((th1_ - th0_) / 2.0f);
+    this->rm = std::max(0.0f, r0_ * factor);
     rerr = (r1_ - r0_) / 2.0f;
     therr = (th1_ - th0_) / 2.0f;
   }
@@ -144,21 +144,21 @@ struct CLinesP2D : LinesP2D {
     for (int index : input) {
       if (used[index]) continue;
       const Point &p = points[index];
-      float q = 1.0;
+      float q = 1.0f;
       float da = region.adist(p.a, unoriented);
       if (lsq) {
-        q *= std::max(0.0, 1.0 - da * da / aeps2);
+        q *= std::max(0.0f, 1.0f - da * da / aeps2);
       } else {
-        if (da > aeps) q = 0.0;
+        if (da > aeps) q = 0.0f;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0f) continue;
       float d = region.dist(p.p[0], p.p[1]);
       if (lsq) {
-        q *= std::max(0.0, 1.0 - d * d / eps2);
+        q *= std::max(0.0f, 1.0f - d * d / eps2);
       } else {
-        if (d > eps) q = 0.0;
+        if (d > eps) q = 0.0f;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0f) continue;
       q *= p.w;
       weight += q;
       result.push_back(index);
@@ -194,10 +194,12 @@ struct CLinesP2D : LinesP2D {
     for (int i = 0; i < 8; i++) {
       auto initial = std::make_shared<State>();
       seedAll(*initial->matches);
+      const float a0 = static_cast<float>(i) * kQuarterPi;
+      const float a1 = static_cast<float>(i + 1) * kQuarterPi;
       if (unoriented)
-        initial->region.set(i * kQuarterPi, (i + 1) * kQuarterPi, 0.0, maxoffset);
+        initial->region.set(a0, a1, 0.0, maxoffset);
       else
-        initial->region.set(i * kQuarterPi, (i + 1) * kQuarterPi, -maxoffset, maxoffset);
+        initial->region.set(a0, a1, -maxoffset, maxoffset);
       filter(initial);
       queue.insert(initial, initial->weight);
     }

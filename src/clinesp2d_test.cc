@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "rast.h"
+#include "util.h"
 
 namespace {
 
@@ -82,7 +83,7 @@ TEST_CASE("LinesP2D: maxresults limits the result count") {
   finder->set_maxresults(3);
   for (float x = 0; x < 50; x += 5.0f) {
     finder->add_ipoint(x, 100.0f, 0.0f, 1.0f);
-    finder->add_ipoint(100.0f, x, M_PI_2, 1.0f);
+    finder->add_ipoint(100.0f, x, kHalfPi, 1.0f);
   }
   finder->compute();
   CHECK(finder->nresults() <= 3);

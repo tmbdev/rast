@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "rast.h"
+#include "util.h"
 
 namespace {
 
@@ -52,7 +53,7 @@ TEST_CASE("InstanceP2D: parameters are within configured ranges") {
   CHECK(ty >= 0.0f);
   CHECK(ty <= 512.0f);
   CHECK(angle >= 0.0f);
-  CHECK(angle <= 2 * M_PI);
+  CHECK(angle <= kTwoPi);
   CHECK(scale >= 0.9f);
   CHECK(scale <= 1.1f);
 }

@@ -48,14 +48,14 @@ struct Segment {
   }
   float lsq(float eps, float delta, vec2 a_) const {
     float la = dir * a_;
-    float q_ = 1.0;
+    float q_ = 1.0f;
     float dl = la - (l0 - delta);
     if (dl < -eps) return 0;
-    if (dl < 0) q_ = 1.0 - sqr(dl * dl / (eps * eps));
+    if (dl < 0) q_ = 1.0f - sqr(dl * dl / (eps * eps));
     float dr = la - (l1 + delta);
     if (dr > eps) return 0;
-    if (dr > 0) q_ = 1.0 - sqr(dr * dr / (eps * eps));
-    q_ *= std::max(0.0, 1.0 - sqr(std::max(0.0f, std::fabs(normal * a_ - d) - delta)) /
+    if (dr > 0) q_ = 1.0f - sqr(dr * dr / (eps * eps));
+    q_ *= std::max(0.0f, 1.0f - sqr(std::max(0.0f, std::fabs(normal * a_ - d) - delta)) /
                             (eps * eps));
     return q_;
   }

@@ -49,8 +49,8 @@ struct LineRegion {
     thm = (th0_ + th1_) / 2;
     uxm = std::cos(thm);
     uym = std::sin(thm);
-    double factor = std::cos((th1_ - th0_) / 2);
-    this->rm = std::max(0.0, r0_ * factor);
+    float factor = std::cos((th1_ - th0_) / 2.0f);
+    this->rm = std::max(0.0f, r0_ * factor);
     rerr = (r1_ - r0_) / 2.0f;
     therr = (th1_ - th0_) / 2.0f;
   }
@@ -145,22 +145,22 @@ struct CLinesS2D : LinesS2D {
     for (int index : input) {
       if (used[index]) continue;
       const Segment &p = points[index];
-      float q = 1.0;
+      float q = 1.0f;
       float da = region.adist(p.a, unoriented);
       if (lsq) {
-        q *= std::max(0.0, 1.0 - da * da / aeps2);
+        q *= std::max(0.0f, 1.0f - da * da / aeps2);
       } else {
-        if (da > aeps) q = 0.0;
+        if (da > aeps) q = 0.0f;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0f) continue;
       float du = region.dist(p.u[0], p.u[1]);
       float dv = region.dist(p.v[0], p.v[1]);
       if (lsq) {
-        q *= std::max(0.0, 1.0 - du * du / eps2) * std::max(0.0, 1.0 - dv * dv / eps2);
+        q *= std::max(0.0f, 1.0f - du * du / eps2) * std::max(0.0f, 1.0f - dv * dv / eps2);
       } else {
-        if (du > eps || dv > eps) q = 0.0;
+        if (du > eps || dv > eps) q = 0.0f;
       }
-      if (q == 0.0) continue;
+      if (q == 0.0f) continue;
       q *= p.w;
       weight += q;
       result.push_back(index);
@@ -179,10 +179,12 @@ struct CLinesS2D : LinesS2D {
     for (int i = 0; i < 8; i++) {
       auto initial = std::make_shared<State>();
       for (int j = 0; j < int(points.size()); j++) initial->matches->push_back(j);
+      const float a0 = static_cast<float>(i) * kQuarterPi;
+      const float a1 = static_cast<float>(i + 1) * kQuarterPi;
       if (unoriented)
-        initial->region.set(i * kQuarterPi, (i + 1) * kQuarterPi, 0.0, maxoffset);
+        initial->region.set(a0, a1, 0.0, maxoffset);
       else
-        initial->region.set(i * kQuarterPi, (i + 1) * kQuarterPi, -maxoffset, maxoffset);
+        initial->region.set(a0, a1, -maxoffset, maxoffset);
       filter(initial);
       queue.insert(initial, initial->weight);
     }

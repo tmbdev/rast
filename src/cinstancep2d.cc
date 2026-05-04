@@ -63,32 +63,35 @@ struct CInstanceP2D : InstanceP2D {
     }
   }
 
+  // urand returns double; cast to float at the boundary.
+  static float frand(double low, double high) { return static_cast<float>(urand(low, high)); }
+
   void generate() override {
-    float dx = urand(0.0, image_size);
-    float dy = urand(0.0, image_size);
+    float dx = frand(0.0, image_size);
+    float dy = frand(0.0, image_size);
     translation = vec2(dx, dy);
-    angle = urand(0.0, 2.0 * M_PI);
-    scale = urand(minscale, maxscale);
+    angle = frand(0.0, 2.0 * M_PI);
+    scale = frand(minscale, maxscale);
     vec2 rotation = vec2(scale * std::cos(angle), scale * std::sin(angle));
     msources.clear();
     ipoints.clear();
     for (int i = 0; i < nmodel_total; i++) {
       Msource m;
-      m.p = vec2(urand(-model_size, model_size), urand(-model_size, model_size));
-      m.a = urand(0.0, 2 * M_PI);
+      m.p = vec2(frand(-model_size, model_size), frand(-model_size, model_size));
+      m.a = frand(0.0, 2 * M_PI);
       msources.push_back(m);
     }
     for (int i = 0; i < nmodel_unoccluded; i++) {
       Ipoint p;
       p.p = cmul(rotation, msources[i].p) + translation + randomUniformVectorFromCircle(error);
-      p.a = msources[i].a + angle + static_cast<float>(urand(-aerror, aerror));
+      p.a = msources[i].a + angle + frand(-aerror, aerror);
       ipoints.push_back(p);
     }
     shuffle(msources);
     for (int i = 0; i < nclutter; i++) {
       Ipoint p;
-      p.p = vec2(urand(0, image_size), urand(0, image_size));
-      p.a = urand(0.0, 2 * M_PI);
+      p.p = vec2(frand(0, image_size), frand(0, image_size));
+      p.a = frand(0.0, 2 * M_PI);
       ipoints.push_back(p);
     }
     shuffle(ipoints);

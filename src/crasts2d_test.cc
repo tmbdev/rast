@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "rast.h"
+#include "util.h"
 
 namespace {
 
@@ -24,7 +25,7 @@ std::unique_ptr<RastS2D> makeMatcher() {
   r->set_min_q(1.0f);
   r->set_xrange(-200, 200);
   r->set_yrange(-200, 200);
-  r->set_arange(-M_PI, M_PI);
+  r->set_arange(-kPi, kPi);
   r->set_srange(0.95f, 1.05f);
   r->set_eps(4.0f, 0.05f);
   r->set_lsq(false);

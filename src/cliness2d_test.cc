@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "rast.h"
+#include "util.h"
 
 namespace {
 
@@ -54,7 +55,7 @@ TEST_CASE("LinesS2D: maxresults limits the result count") {
   finder->set_maxresults(2);
   for (float x = 0; x < 100; x += 20.0f) {
     finder->add_iseg(x, 100.0f, x + 18.0f, 100.0f, 0.0f, 1.0f);
-    finder->add_iseg(50.0f, x, 50.0f, x + 18.0f, M_PI_2, 1.0f);
+    finder->add_iseg(50.0f, x, 50.0f, x + 18.0f, kHalfPi, 1.0f);
   }
   finder->compute();
   CHECK(finder->nresults() <= 2);
@@ -64,7 +65,7 @@ TEST_CASE("LinesS2D: vertical line is recovered") {
   auto finder = makeFinder();
   const float cx = 100.0f;
   for (float y = 0; y < 300; y += 20.0f) {
-    finder->add_iseg(cx, y, cx, y + 18.0f, M_PI_2, 1.0f);
+    finder->add_iseg(cx, y, cx, y + 18.0f, kHalfPi, 1.0f);
   }
   finder->compute();
   REQUIRE(finder->nresults() >= 1);

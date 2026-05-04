@@ -19,7 +19,7 @@ struct Trie1 {
 
   void init(float eps_, int w) {
     this->eps = eps_;
-    buckets.assign(int(w / eps_) + 1, {});
+    buckets.assign(int(static_cast<float>(w) / eps_) + 1, {});
   }
   void add(float x, T key) {
     int i = int(x / eps);
@@ -54,22 +54,22 @@ struct Trie2 {
     this->xoffset = xmin;
     this->yoffset = ymin;
     this->eps = eps_;
-    this->dimX = int(w / eps_) + 1;
-    this->dimY = int(h / eps_) + 1;
+    this->dimX = int(static_cast<float>(w) / eps_) + 1;
+    this->dimY = int(static_cast<float>(h) / eps_) + 1;
     buckets.assign(dimX * dimY, {});
   }
   void add(float x, float y, T key) {
-    x -= xoffset;
-    y -= yoffset;
+    x -= static_cast<float>(xoffset);
+    y -= static_cast<float>(yoffset);
     int i = int(x / eps);
     int j = int(y / eps);
     buckets[i * dimY + j].push_back({key, x, y});
   }
   void query(std::vector<T> &keys, float x0, float y0, float x1, float y1) {
-    x0 -= xoffset;
-    y0 -= yoffset;
-    x1 -= xoffset;
-    y1 -= yoffset;
+    x0 -= static_cast<float>(xoffset);
+    y0 -= static_cast<float>(yoffset);
+    x1 -= static_cast<float>(xoffset);
+    y1 -= static_cast<float>(yoffset);
     const int iEnd = clamp(int(x1 / eps), dimX);
     const int jEnd = clamp(int(y1 / eps), dimY);
     for (int i = clamp(int(x0 / eps), dimX); i <= iEnd; i++) {
