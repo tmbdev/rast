@@ -13,19 +13,13 @@ all: rast-test rast cedges rast.so tests
 rast: rast.o librast.a
 rast-test: rast-test.o librast.a
 cedges: cedges.cc
-	$(CXX) -Wno-error -o cedges -DMAIN $< -DUNSAFE -O3
+	$(CXX) -o cedges -DMAIN $<
 
 LIBRAST=cedges.o calignmentp2d.o cinstancep2d.o \
 	clinesp2d.o cliness2d.o crastp2d.o crastss2d.o crasts2d.o \
 	crastrs2d.o
 librast.a: $(LIBRAST)
 	$(AR) cr $@ $^
-
-# cedges.cc is legacy code that doesn't conform to the strict warning set
-# (heavy float<->double mixing, internal shadowing). Compile it without
-# -Werror so the rest of the strict checks still apply project-wide.
-cedges.o: cedges.cc
-	$(CXX) -Wno-error -c $< -o $@
 
 # tests/rast-test.cc is the legacy regression-test driver and reaches into
 # urand() / drand48() (which return double) on every line; the strict
@@ -49,7 +43,7 @@ rast.o: rast.cc
 rast.so: rast_pybind.cc librast.a
 	$(CXX) -fPIC -I$(SRCDIR) -I$(PYINC) -shared $< librast.a -o $@
 
-DOCTESTS = calignmentp2d_test.o cinstancep2d_test.o clinesp2d_test.o cliness2d_test.o \
+DOCTESTS = calignmentp2d_test.o cedges_test.o cinstancep2d_test.o clinesp2d_test.o cliness2d_test.o \
 	crastp2d_test.o crastrs2d_test.o crasts2d_test.o crastss2d_test.o
 tests: test_main.o $(DOCTESTS) librast.a
 	$(CXX) -o tests test_main.o $(DOCTESTS) librast.a -lm

@@ -54,7 +54,7 @@ struct EdgeDetector {
   virtual void save_pnm(const char *file) = 0;
 
   /// Image dimension along axis `i` (0 = width, 1 = height).
-  virtual int dim(int i) = 0;
+  virtual int dim(int i) const = 0;
   /// Set the input image from a caller-owned grayscale buffer (size w*h).
   /// Buffer must remain valid until `compute()` returns.
   virtual void set_image(unsigned char *p, int w, int h) = 0;
@@ -66,26 +66,26 @@ struct EdgeDetector {
 
   /// Copy out the binary edge map into the caller-owned buffer.
   /// Buffer dimensions must match `dim(0) x dim(1)`; throws otherwise.
-  virtual void get_eimage(unsigned char *p, int w, int h) = 0;
+  virtual void get_eimage(unsigned char *p, int w, int h) const = 0;
   /// Copy out a colorized visualization of the edges.
-  virtual void get_epixmap(unsigned char *image, int w, int h) = 0;
+  virtual void get_epixmap(unsigned char *image, int w, int h) const = 0;
 
-  virtual float gradient_magnitude(int x, int y) = 0;
-  virtual float gradient_angle(int x, int y) = 0;
+  virtual float gradient_magnitude(int x, int y) const = 0;
+  virtual float gradient_angle(int x, int y) const = 0;
 
   /// Advance to the next edge chain. Returns false when the chains are
   /// exhausted. After this call, `npoints()` and `nsegments()` describe
   /// the current chain.
   virtual bool nextchain() = 0;
   /// Number of points in the current chain.
-  virtual int npoints() = 0;
+  virtual int npoints() const = 0;
   /// Read out the `index`-th point of the current chain.
-  virtual void point(int index, float &x, float &y) = 0;
+  virtual void point(int index, float &x, float &y) const = 0;
   /// Number of segments in the polygonal approximation of the current chain.
-  virtual int nsegments() = 0;
+  virtual int nsegments() const = 0;
   /// Read out the `i`-th segment of the polygonal approximation.
   virtual void segment(int i, float &x0, float &y0, float &x1, float &y1, float &angle,
-                       float &magnitude, int &n) = 0;
+                       float &magnitude, int &n) const = 0;
 };
 
 /// Allocate a default-configured edge detector.

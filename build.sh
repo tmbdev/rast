@@ -26,7 +26,7 @@ WARNINGS="$WARNINGS -Wold-style-cast -Wcast-align -Woverloaded-virtual -Wconvers
 # already migrated to the kPi family in util.h, but the literal-suffix sweep
 # is still pending.
 
-COMMON="-std=c++20 $WARNINGS -fPIC -fvisibility=hidden -fvisibility-inlines-hidden"
+COMMON="-std=c++23 $WARNINGS -fPIC -fvisibility=hidden -fvisibility-inlines-hidden"
 
 AR_OVERRIDE="ar"
 case "$BUILD_TYPE" in

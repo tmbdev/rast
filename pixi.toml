@@ -13,6 +13,7 @@ numpy = "*"
 clang-format = "*"
 doctest = "*"
 pybind11 = "*"
+mdspan = "*"
 
 # Make the pybind11-built rast module importable from `pixi run python ...`.
 # Production first so `import rast` doesn't try to load a debug build with

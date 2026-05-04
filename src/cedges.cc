@@ -1,13 +1,11 @@
 // Copyright 1990-2026 by Thomas M. Breuel
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
-/* Compile with: g++ -g -O2 -DMAIN cedges.cc */
-
-/* this is a test */
+/* Compile with: g++ -std=c++23 -DMAIN cedges.cc -o cedges */
 
 /*
     A self-contained implementation of something like the Canny edge detector
-    in C++. Reads PGM and PPM files and outputs edge maps, edge chains,
+    in C++23. Reads PGM and PPM files and outputs edge maps, edge chains,
     sampled edge chains, and polygonal approximations.
 
     The implementation uses a FIR filter and difference-of-gaussians instead
@@ -15,19 +13,16 @@
     found it to be noticeably better, and its behavior around image borders
     is less predictable.
 
-    Compile with -DMAIN in order to get the main program.
+    Compile with -DMAIN to get the main program. Without that, you get a
+    class iupr_cedges::CEdges (factory: makeEdgeDetector()) that you can
+    call from within your own programs.
 
-    Without that, you get a class lumo_cedges::CEdges that you can call from
-    within your own programs.
-
-    If you find this code useful and use it in some research leading
-    to a publication, I would appreciate being mentioned in the
-    Acknowledgements section.
-
+    If you find this code useful and use it in some research leading to a
+    publication, I would appreciate being mentioned in the Acknowledgements
+    section.
 */
 
 /*
-
 Usage:
    cedges < input > output
 
@@ -46,549 +41,261 @@ Parameters (via environment):
                         poly: output polygons
                         chain: output chains of edge pixels
                         map: output edge map in PBM format
-
 */
 
-#include <math.h>
-#include <malloc.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-
-#include <memory>
-#include <stdexcept>
-#include <string.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <istream>
+#include <memory>
+#include <ostream>
+#include <stdexcept>
+#include <vector>
+
+// Keep the legacy paren-call syntax (arr(i,j)) on top of mdarray. The Kokkos
+// reference implementation defaults to bracket-only when C++23's
+// multidimensional subscript is detected; opt back into both.
+#define MDSPAN_USE_PAREN_OPERATOR 1
+#include <experimental/mdarray>
+#include <experimental/mdspan>
 
 #include "cedges.h"
 
 namespace iupr_cedges {
-// template <class T> inline T signbit(T a) { return a<0?1:0; }
+
+namespace stdex = std::experimental;
+
 template <class T>
 inline T sqr(T x) {
   return x * x;
 }
+
 template <class T>
-inline T min(T a, T b) {
-  return a < b ? a : b;
-}
+using Image = stdex::mdarray<T, stdex::dextents<int, 2>>;
+
+using ByteImage = Image<unsigned char>;
+using FloatImage = Image<float>;
+
 template <class T>
-inline T max(T a, T b) {
-  return a > b ? a : b;
-}
-template <class T>
-inline void swap(T &a, T &b) {
-  T temp = a;
-  a = b;
-  b = temp;
+static void fill_image(Image<T>& a, T value) {
+  std::fill(a.data(), a.data() + a.size(), value);
 }
 
-template <class T>
-struct autodel {
-  T *data;
-  autodel() { data = 0; }
-  ~autodel() {
-    if (data)
-      delete data;
-  }
-  autodel(T *other) { data = other; }
-  void operator=(T *other) {
-    if (data)
-      delete data;
-    data = other;
-  }
-  T &operator*() { return *data; }
-  T *operator->() { return data; }
-  operator bool() { return !!data; }
-};
-
-struct Stdio {
-  FILE *stream;
-  operator FILE *() { return stream; }
-  Stdio() { stream = 0; }
-  Stdio(const char *file, const char *mode) {
-    stream = fopen(file, mode);
-    if (!stream)
-      throw std::runtime_error("open failed");
-  }
-  ~Stdio() {
-    if (stream) {
-      fclose(stream);
-      stream = 0;
-    }
-  }
-  void open(const char *file, const char *mode) {
-    if (stream) {
-      fclose(stream);
-      stream = 0;
-    }
-    stream = fopen(file, mode);
-    if (!stream)
-      throw std::runtime_error("open failed");
-  }
-  void close() {
-    if (stream) {
-      fclose(stream);
-      stream = 0;
-    }
-  }
-  void popen(const char *file, const char *mode) {
-    if (stream) {
-      fclose(stream);
-      stream = 0;
-    }
-    stream = ::popen(file, mode);
-    if (!stream)
-      throw std::runtime_error("open failed");
-  }
-  void pclose() {
-    if (stream) {
-      ::pclose(stream);
-      stream = 0;
-    }
-  }
-};
-
-#define ASSERT(X)                                                                                  \
-  do {                                                                                             \
-    if (!(X))                                                                                      \
-      throw std::runtime_error("ASSERTION FAILED: " #X);                                                               \
-  } while (0)
-#define RANGE(X, N) ASSERT(unsigned(X) < unsigned(N))
-
-template <class T>
-struct Array {
-  T *data;
-  int total;
-  int size;
-  int dims[2];
-
-  explicit Array() {
-    total = 4;
-    size = 0;
-    dims[0] = dims[1] = 0;
-    data = new T[total];
-  }
-
-  explicit Array(int d0, int d1 = 1) {
-    total = size = d0 * d1;
-    dims[0] = d0;
-    dims[1] = d1;
-    data = new T[total];
-  }
-
-  ~Array() {
-    delete[] data;
-    total = size = 0;
-    dims[0] = dims[1] = 0;
-    data = 0;
-  }
-
-  void operator=(T value) {
-    for (int i = 0; i < total; i++)
-      data[i] = value;
-  }
-
-  void resize(int d0, int d1 = 1) {
-    if (d0 * d1 > size) {
-      delete[] data;
-      total = size = d0 * d1;
-      data = new T[total];
-    }
-    dims[0] = d0;
-    dims[1] = d1;
-    size = d0 * d1;
-  }
-
-  template <class S>
-  void copy(Array<S> &other) {
-    resize(other.dim(0), other.dim(1));
-    for (int i = 0, n = length(); i < n; i++)
-      operator[](i) = other[i];
-  }
-
-  void reshape(int d0, int d1 = 1) {
-    if (d0 * d1 != size)
-      throw std::length_error("incompatible reshape");
-    dims[0] = d0;
-    dims[1] = d1;
-  }
-
-  int dim(int i) { return dims[i]; }
-
-  T &operator()(int i0) {
-#ifndef UNSAFE
-    if (unsigned(i0) >= unsigned(dims[0]))
-      throw std::out_of_range("index error");
-#endif
-    return data[i0];
-  }
-
-  T &operator()(int i0, int i1) {
-#ifndef UNSAFE
-    if (unsigned(i0) >= unsigned(dims[0]))
-      throw std::out_of_range("index error");
-    if (unsigned(i1) >= unsigned(dims[1]))
-      throw std::out_of_range("index error");
-#endif
-    return data[i1 + dims[1] * i0];
-  }
-
-  int length() const { return size; }
-  T &operator[](int i0) const {
-    if (unsigned(i0) >= unsigned(size))
-      throw std::out_of_range("index error");
-    return data[i0];
-  }
-  T &push() {
-    if (size == total) {
-      int ntotal = total * 2 + 1;
-      T *ndata = new T[ntotal];
-      for (int i = 0; i < total; i++)
-        ndata[i] = data[i];
-      delete[] data;
-      total = ntotal;
-      data = ndata;
-    }
-    return data[size++];
-  }
-  void push(const T &obj) { push() = obj; }
-  void push(T &obj) { push() = obj; }
-  T &pop() {
-    if (size < 1)
-      throw std::out_of_range("index error (pop)");
-    return data[--size];
-  }
-  void clear() { size = 0; }
-
-  void reset() {
-    resize(4, 0);
-    size = 0;
-    dims[0] = dims[1] = 0;
-  }
-
-  void getd0(Array<T> &out, int i) {
-    out.resize(dims[1]);
-    for (int j = 0; j < dims[1]; j++) {
-      out(j) = operator()(i, j);
-    }
-  }
-  void getd1(Array<T> &out, int j) {
-    out.resize(dims[0]);
-    for (int i = 0; i < dims[0]; i++) {
-      out(i) = operator()(i, j);
-    }
-  }
-  void putd0(Array<T> &in, int i) {
-    for (int j = 0; j < dims[1]; j++) {
-      operator()(i, j) = in(j);
-    }
-  }
-  void putd1(Array<T> &in, int j) {
-    for (int i = 0; i < dims[0]; i++) {
-      operator()(i, j) = in(i);
-    }
-  }
-
-private:
-  Array(Array<T> &);
-  void operator=(Array<T> &);
-};
-
-typedef Array<unsigned char> ByteArray;
-typedef Array<float> FloatArray;
-typedef Array<int> IntArray;
-
-template <class T>
-T min(Array<T> &data) {
-  T result = data[0];
-  for (int i = 1, n = data.length(); i < n; i++) {
-    T value = data[i];
-    if (value < result)
-      result = value;
-  }
-  return result;
-}
-
-template <class T>
-T max(Array<T> &data) {
-  T result = data[0];
-  for (int i = 1, n = data.length(); i < n; i++) {
-    T value = data[i];
-    if (value > result)
-      result = value;
-  }
-  return result;
-}
-
-template <class T>
-int count(Array<T> &data) {
-  int total = 0;
-  for (int i = 0, n = data.length(); i < n; i++) {
-    if (data[i])
-      total++;
-  }
-  return total;
-}
-
-template <class T>
-void reverse(Array<T> &data) {
-  for (int i = 0, n = data.length(), n2 = n / 2; i < n2; i++) {
-    swap(data[i], data[n - i - 1]);
+template <class S, class D>
+static void copy_image(Image<D>& dst, const Image<S>& src) {
+  dst = Image<D>(src.extent(0), src.extent(1));
+  const int n = static_cast<int>(src.size());
+  for (int i = 0; i < n; i++) {
+    dst.data()[i] = static_cast<D>(src.data()[i]);
   }
 }
 
 struct vec2 {
   enum { N = 2 };
   float data[2];
-  explicit vec2(float v0 = 0, float v1 = 0) {
+  explicit vec2(float v0 = 0.0f, float v1 = 0.0f) {
     data[0] = v0;
     data[1] = v1;
   }
   int length() const { return N; }
   float at(int i) const {
-    RANGE(i, N);
+    assert(static_cast<unsigned>(i) < static_cast<unsigned>(N));
     return data[i];
   }
   float operator()(int i) const {
-    RANGE(i, N);
+    assert(static_cast<unsigned>(i) < static_cast<unsigned>(N));
     return data[i];
   }
-  float &operator()(int i) {
-    RANGE(i, N);
+  float& operator()(int i) {
+    assert(static_cast<unsigned>(i) < static_cast<unsigned>(N));
     return data[i];
   }
   float operator[](int i) const {
-    RANGE(i, N);
+    assert(static_cast<unsigned>(i) < static_cast<unsigned>(N));
     return data[i];
   }
-  float &operator[](int i) {
-    RANGE(i, N);
+  float& operator[](int i) {
+    assert(static_cast<unsigned>(i) < static_cast<unsigned>(N));
     return data[i];
   }
-  vec2 operator+(const vec2 &other) const { return vec2(at(0) + other(0), at(1) + other(1)); }
-  vec2 operator-(const vec2 &other) const { return vec2(at(0) - other(0), at(1) - other(1)); }
-  float operator*(const vec2 &other) const { return at(0) * other(0) + at(1) * other(1); }
+  vec2 operator+(const vec2& other) const { return vec2(at(0) + other(0), at(1) + other(1)); }
+  vec2 operator-(const vec2& other) const { return vec2(at(0) - other(0), at(1) - other(1)); }
+  float operator*(const vec2& other) const { return at(0) * other(0) + at(1) * other(1); }
   vec2 operator*(float scale) const { return vec2(at(0) * scale, at(1) * scale); }
   vec2 operator/(float scale) const { return vec2(at(0) / scale, at(1) / scale); }
-  float magnitude() const { return sqrt(sqr(data[0]) + sqr(data[1])); }
-  float angle() const { return atan2(data[1], data[0]); }
+  float magnitude() const { return std::sqrt(sqr(data[0]) + sqr(data[1])); }
+  float angle() const { return std::atan2(data[1], data[0]); }
   float magnitude_squared() const { return sqr(data[0]) + sqr(data[1]); }
-  vec2 normalized() const { return operator*(1.0 / magnitude()); }
+  vec2 normalized() const { return operator*(1.0f / magnitude()); }
   vec2 normal() const { return vec2(-data[1], data[0]); }
-  float distance(const vec2 &b) {
-    const vec2 &a = *this;
-    return (a - b).magnitude();
-  }
-  inline vec2 cmul(const vec2 &b) const {
-    const vec2 &a = *this;
+  float distance(const vec2& b) const { return (*this - b).magnitude(); }
+  vec2 cmul(const vec2& b) const {
+    const vec2& a = *this;
     return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
   }
-  inline vec2 cdiv(const vec2 &b) const {
-    const vec2 &a = *this;
-    double n = sqr(b[0]) + sqr(b[1]);
+  vec2 cdiv(const vec2& b) const {
+    const vec2& a = *this;
+    float n = sqr(b[0]) + sqr(b[1]);
     return vec2((a[0] * b[0] + a[1] * b[1]) / n, (a[1] * b[0] - a[0] * b[1]) / n);
   }
 };
 
-typedef Array<vec2> Vec2Array;
-
-#if 0
-    static float chainlength(Vec2Array &ps) {
-        float total = 0.0;
-        for(int i=1;i<ps.length();i++) {
-            total += ps[i].distance(ps[i-1]);
-        }
-        return total;
-    }
-#endif
-
-static int scanint(FILE *file) {
+static int scanint(std::istream& in) {
   int value;
-  if (fscanf(file, "%d", &value) != 1)
-    throw std::runtime_error("read_pnm: number format error in image");
+  if (!(in >> value)) throw std::runtime_error("read_pnm: number format error in image");
   return value;
 }
 
-static int getbyte(FILE *file) {
-  int value = getc(file);
-  if (value == -1)
-    throw std::runtime_error("read_pnm: image short");
+static int getbyte(std::istream& in) {
+  int value = in.get();
+  if (value < 0) throw std::runtime_error("read_pnm: image short");
   return value;
 }
 
-static void read_pnm(ByteArray &image, FILE *file) {
-  char cp = getc(file);
-  if (cp != 'P')
-    throw std::runtime_error("read_pnm: unknown format");
-  int ctype = getc(file) - '0';
+static void read_pnm(ByteImage& image, std::istream& in) {
+  int cp = in.get();
+  if (cp != 'P') throw std::runtime_error("read_pnm: unknown format");
+  int ctype = in.get() - '0';
   if (ctype != 2 && ctype != 3 && ctype != 5 && ctype != 6)
     throw std::runtime_error("read_pnm: cannot handle this type");
-  int params[3];
+  int params[3] = {0, 0, 0};
   int nparams = 0;
   while (nparams < 3) {
-    int c = getc(file);
-    if (c < 0)
-      throw std::runtime_error("read_pnm: unexpected eof");
-    if (isdigit(c)) {
-      ungetc(c, file);
-      if (fscanf(file, "%d", &params[nparams]) != 1)
-        throw std::runtime_error("read_pnm: bad number format");
+    int c = in.get();
+    if (c < 0) throw std::runtime_error("read_pnm: unexpected eof");
+    if (std::isdigit(static_cast<unsigned char>(c))) {
+      in.unget();
+      if (!(in >> params[nparams])) throw std::runtime_error("read_pnm: bad number format");
       nparams++;
-      c = getc(file);
-      if (!isspace(c))
+      c = in.get();
+      if (c < 0 || !std::isspace(static_cast<unsigned char>(c)))
         throw std::runtime_error("read_pnm: bad header format");
       continue;
     }
     if (c == '#') {
       for (;;) {
-        c = getc(file);
-        if (c == '\n')
-          break;
-        if (c == -1)
-          throw std::runtime_error("read_pnm: unexpected eof");
+        c = in.get();
+        if (c == '\n') break;
+        if (c < 0) throw std::runtime_error("read_pnm: unexpected eof");
       }
     }
   }
-  image.resize(params[0], params[1]);
-  for (int j = image.dim(1) - 1; j >= 0; j--) {
-    for (int i = 0; i < image.dim(0); i++) {
-      int value;
+  image = ByteImage(params[0], params[1]);
+  for (int j = image.extent(1) - 1; j >= 0; j--) {
+    for (int i = 0; i < image.extent(0); i++) {
+      int value = 0;
       switch (ctype) {
       case 2:
-        value = scanint(file);
+        value = scanint(in);
         break;
       case 3:
-        value = (scanint(file) + scanint(file) + scanint(file)) / 3;
+        value = (scanint(in) + scanint(in) + scanint(in)) / 3;
         break;
       case 5:
-        value = getbyte(file);
+        value = getbyte(in);
         break;
       case 6:
-        value = (getbyte(file) + getbyte(file) + getbyte(file)) / 3;
+        value = (getbyte(in) + getbyte(in) + getbyte(in)) / 3;
         break;
       default:
         throw std::runtime_error("bad type");
       }
-      image(i, j) = value;
+      image(i, j) = static_cast<unsigned char>(value);
     }
   }
 }
 
-static void write_pnm(FILE *file, ByteArray &image) {
-  fprintf(file, "P5\n%d %d %d\n", image.dim(0), image.dim(1), 255);
-  for (int j = image.dim(1) - 1; j >= 0; j--) {
-    for (int i = 0; i < image.dim(0); i++) {
-      fputc(image(i, j), file);
+static void write_pnm(std::ostream& out, const ByteImage& image) {
+  out << "P5\n" << image.extent(0) << " " << image.extent(1) << " 255\n";
+  for (int j = image.extent(1) - 1; j >= 0; j--) {
+    for (int i = 0; i < image.extent(0); i++) {
+      out.put(static_cast<char>(image(i, j)));
     }
   }
 }
 
-static void read_pnm(ByteArray &image, const char *file) {
-  Stdio stream(file, "r");
+static void read_pnm(ByteImage& image, const char* file) {
+  std::ifstream stream(file, std::ios::binary);
+  if (!stream) throw std::runtime_error("read_pnm: open failed");
   read_pnm(image, stream);
 }
 
-static void write_pnm(const char *file, ByteArray &image) {
-  Stdio stream(file, "w");
+static void write_pnm(const char* file, const ByteImage& image) {
+  std::ofstream stream(file, std::ios::binary);
+  if (!stream) throw std::runtime_error("write_pnm: open failed");
   write_pnm(stream, image);
 }
 
-#if 0
-    static void display(ByteArray &image) {
-        Stdio stream;
-        stream.popen("display","w");
-        write_pnm(stream,image);
-        stream.pclose();
-    }
-#endif
-
-struct scaled_array {
-  ByteArray data;
-  scaled_array(FloatArray &image, float minv = 1e30, float maxv = -1e30) {
-    int w = image.dim(0), h = image.dim(1), n = image.length();
-    data.resize(w, h);
-    if (minv > maxv) {
-      minv = min(image);
-      maxv = max(image);
-    }
-    if (maxv == minv)
-      maxv = minv + 1.0;
-    float scale = 256.0 * maxv - minv;
-    for (int i = 0; i < n; i++) {
-      int value = int(scale * (image[i] - minv));
-      if (value < 0)
-        value = 0;
-      if (value > 255)
-        value = 255;
-      data[i] = value;
-    }
-  }
-  operator ByteArray &() { return data; }
-};
-
-static void gauss1d(FloatArray &out, FloatArray &in, float sigma) {
-  out.resize(in.length());
-  // make a normalized mask
-  int range = 1 + int(3.0 * sigma);
-  FloatArray mask(2 * range + 1);
+static void gauss1d(std::vector<float>& out, const std::vector<float>& in, float sigma) {
+  out.assign(in.size(), 0.0f);
+  const int range = 1 + static_cast<int>(3.0f * sigma);
+  std::vector<float> mask(static_cast<std::size_t>(2 * range + 1));
   for (int i = 0; i <= range; i++) {
-    double y = exp(-i * i / 2.0 / sigma / sigma);
-    mask(range + i) = mask(range - i) = y;
+    const float y = std::exp(-static_cast<float>(i * i) / (2.0f * sigma * sigma));
+    mask[static_cast<std::size_t>(range + i)] = y;
+    mask[static_cast<std::size_t>(range - i)] = y;
   }
-  float total = 0.0;
-  for (int i = 0; i < mask.length(); i++)
-    total += mask[i];
-  for (int i = 0; i < mask.length(); i++)
-    mask[i] /= total;
+  float total = 0.0f;
+  for (float v : mask) total += v;
+  for (float& v : mask) v /= total;
 
-  // apply it
-  int n = in.length();
+  const int n = static_cast<int>(in.size());
+  const int m = static_cast<int>(mask.size());
   for (int i = 0; i < n; i++) {
-    double total = 0.0;
-    for (int j = 0; j < mask.length(); j++) {
+    float sum = 0.0f;
+    for (int j = 0; j < m; j++) {
       int index = i + j - range;
-      if (index < 0)
-        index = 0;
-      if (index >= n)
-        index = n - 1;
-      total += in[index] * mask[j]; // it's symmetric
+      if (index < 0) index = 0;
+      if (index >= n) index = n - 1;
+      sum += in[static_cast<std::size_t>(index)] * mask[static_cast<std::size_t>(j)];
     }
-    out[i] = total;
+    out[static_cast<std::size_t>(i)] = sum;
   }
 }
 
-static void gauss2d(FloatArray &a, float sx, float sy) {
-  FloatArray r, s;
-  for (int i = 0; i < a.dim(0); i++) {
-    a.getd0(r, i);
+static void gauss2d(FloatImage& a, float sx, float sy) {
+  const int w = a.extent(0);
+  const int h = a.extent(1);
+  std::vector<float> r, s;
+  // smooth along axis 1 for each i (the dim-1 stride is 1)
+  r.resize(static_cast<std::size_t>(h));
+  for (int i = 0; i < w; i++) {
+    for (int j = 0; j < h; j++) r[static_cast<std::size_t>(j)] = a(i, j);
     gauss1d(s, r, sy);
-    a.putd0(s, i);
+    for (int j = 0; j < h; j++) a(i, j) = s[static_cast<std::size_t>(j)];
   }
-  for (int j = 0; j < a.dim(1); j++) {
-    a.getd1(r, j);
+  // smooth along axis 0 for each j
+  r.resize(static_cast<std::size_t>(w));
+  for (int j = 0; j < h; j++) {
+    for (int i = 0; i < w; i++) r[static_cast<std::size_t>(i)] = a(i, j);
     gauss1d(s, r, sx);
-    a.putd1(s, j);
+    for (int i = 0; i < w; i++) a(i, j) = s[static_cast<std::size_t>(i)];
   }
 }
 
-template <class T>
-inline T isign(T x) {
-  return ((x) >= 0 ? 1 : -1);
-}
+static int isign(float x) { return x >= 0.0f ? 1 : -1; }
 
-static void nonmaxsup(ByteArray &out, FloatArray &gradm, FloatArray &gradx, FloatArray &grady) {
-  int w = gradm.dim(0), h = gradm.dim(1);
-  out.resize(w, h);
-  out = 0;
+static void nonmaxsup(ByteImage& out, const FloatImage& gradm, const FloatImage& gradx,
+                      const FloatImage& grady) {
+  const int w = gradm.extent(0);
+  const int h = gradm.extent(1);
+  out = ByteImage(w, h);
+  fill_image(out, static_cast<unsigned char>(0));
   for (int i = 1; i < w - 1; i++) {
     for (int j = 1; j < h - 1; j++) {
       float dx = gradx(i, j);
-      float ux = fabs(dx);
+      float ux = std::fabs(dx);
       float dy = grady(i, j);
-      float uy = fabs(dy);
-      int bx = int(isign(dx));
-      int by = int(isign(dy));
+      float uy = std::fabs(dy);
+      int bx = isign(dx);
+      int by = isign(dy);
       int ax = bx * (ux > uy);
       int ay = by * (ux <= uy);
       float vx, vy;
@@ -602,66 +309,53 @@ static void nonmaxsup(ByteArray &out, FloatArray &gradm, FloatArray &gradx, Floa
       float c = gradm(i, j);
       float u = gradm(i - ax, j - ay);
       float d = gradm(i - bx, j - by);
-      if (vy * c <= (vx * d + (vy - vx) * u))
-        continue;
+      if (vy * c <= (vx * d + (vy - vx) * u)) continue;
       u = gradm(i + ax, j + ay);
       d = gradm(i + bx, j + by);
-      if (vy * c < (vx * d + (vy - vx) * u))
-        continue;
+      if (vy * c < (vx * d + (vy - vx) * u)) continue;
       out(i, j) = 255;
     }
   }
 }
 
-static float masked_fractile(FloatArray &gradm, const ByteArray &mask, float frac,
+static float masked_fractile(const FloatImage& gradm, const ByteImage& mask, float frac,
                              int bins = 1000) {
-  bool use_mask = mask.length() > 0;
-  IntArray hist(bins);
-  hist = 0;
-  float minv = 1e30, maxv = -1e30;
+  const bool use_mask = mask.size() > 0;
+  std::vector<int> hist(static_cast<std::size_t>(bins), 0);
+  float minv = 1e30f, maxv = -1e30f;
   int count = 0;
-  for (int i = 0, n = gradm.length(); i < n; i++) {
-    if (use_mask && !mask[i])
-      continue;
+  const int total = static_cast<int>(gradm.size());
+  const float* g = gradm.data();
+  const unsigned char* m = mask.data();
+  for (int i = 0; i < total; i++) {
+    if (use_mask && !m[i]) continue;
     count++;
-    if (maxv < gradm[i])
-      maxv = gradm[i];
-    if (minv > gradm[i])
-      minv = gradm[i];
+    if (maxv < g[i]) maxv = g[i];
+    if (minv > g[i]) minv = g[i];
   }
-  if (count < 2)
-    return minv;
-  if (maxv == minv)
-    return minv;
-  int limit = int(frac * count);
-  float scale = bins / (maxv - minv);
-  for (int i = 0, n = gradm.length(); i < n; i++) {
-    if (use_mask && !mask[i])
-      continue;
-    int bin = int(scale * (gradm[i] - minv));
-    hist[min(bins - 1, bin)]++;
+  if (count < 2) return minv;
+  if (maxv == minv) return minv;
+  const int limit = static_cast<int>(frac * static_cast<float>(count));
+  const float scale = static_cast<float>(bins) / (maxv - minv);
+  for (int i = 0; i < total; i++) {
+    if (use_mask && !m[i]) continue;
+    int bin = static_cast<int>(scale * (g[i] - minv));
+    hist[static_cast<std::size_t>(std::min(bins - 1, bin))]++;
   }
   int i = 0, sum = 0;
   for (; i < bins && sum < limit; i++) {
-    sum += hist[i];
+    sum += hist[static_cast<std::size_t>(i)];
   }
-  return (maxv - minv) * i / bins + minv;
+  return (maxv - minv) * static_cast<float>(i) / static_cast<float>(bins) + minv;
 }
 
-static void masked_fill(ByteArray &in, ByteArray &out, int x, int y) {
-  int w = in.dim(0), h = in.dim(1);
-  if (x < 0)
-    return;
-  if (x >= w)
-    return;
-  if (y < 0)
-    return;
-  if (y >= h)
-    return;
-  if (!in(x, y))
-    return;
-  if (out(x, y))
-    return;
+static void masked_fill(const ByteImage& in, ByteImage& out, int x, int y) {
+  const int w = in.extent(0);
+  const int h = in.extent(1);
+  if (x < 0 || x >= w) return;
+  if (y < 0 || y >= h) return;
+  if (!in(x, y)) return;
+  if (out(x, y)) return;
   out(x, y) = 1;
   masked_fill(in, out, x + 1, y);
   masked_fill(in, out, x, y + 1);
@@ -673,31 +367,30 @@ static void masked_fill(ByteArray &in, ByteArray &out, int x, int y) {
   masked_fill(in, out, x + 1, y - 1);
 }
 
-static void hysteresis_thresholding(ByteArray &out, FloatArray &gradm, ByteArray &mask, float tlow,
-                                    float thigh) {
-  int w = gradm.dim(0), h = gradm.dim(1);
-  ByteArray low(w, h);
-  low = 0;
-  out.resize(w, h);
-  out = 0;
+static void hysteresis_thresholding(ByteImage& out, const FloatImage& gradm, const ByteImage& mask,
+                                    float tlow, float thigh) {
+  const int w = gradm.extent(0);
+  const int h = gradm.extent(1);
+  ByteImage low(w, h);
+  fill_image(low, static_cast<unsigned char>(0));
+  out = ByteImage(w, h);
+  fill_image(out, static_cast<unsigned char>(0));
+  const bool use_mask = mask.size() > 0;
   for (int i = 0; i < w; i++)
     for (int j = 0; j < h; j++) {
-      if (mask.dim(0) > 0 && !mask(i, j))
-        continue;
-      if (gradm(i, j) > tlow)
-        low(i, j) = 1;
+      if (use_mask && !mask(i, j)) continue;
+      if (gradm(i, j) > tlow) low(i, j) = 1;
     }
   for (int i = 0; i < w; i++)
     for (int j = 0; j < h; j++) {
-      if (gradm(i, j) > thigh)
-        masked_fill(low, out, i, j);
+      if (gradm(i, j) > thigh) masked_fill(low, out, i, j);
     }
 }
 
-static void thin(ByteArray &uci) {
+static void thin(ByteImage& uci) {
   enum { OFF = 0, ON = 1, SKEL = 2, DEL = 3 };
 
-  static char ttable[256] = {
+  static const unsigned char ttable[256] = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, /* 00 */
       0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, /* 10 */
       0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /* 20 */
@@ -716,17 +409,16 @@ static void thin(ByteArray &uci) {
       0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0  /* f0 */
   };
 
-  static int nx[] = {1, 1, 0, -1, -1, -1, 0, 1};
-  static int ny[] = {0, 1, 1, 1, 0, -1, -1, -1};
+  static const int nx[] = {1, 1, 0, -1, -1, -1, 0, 1};
+  static const int ny[] = {0, 1, 1, 1, 0, -1, -1, -1};
 
-  int w = uci.dim(0) - 1;
-  int h = uci.dim(1) - 1;
+  const int w = uci.extent(0) - 1;
+  const int h = uci.extent(1) - 1;
 
-  for (int i = 0, n = uci.length(); i < n; i++) {
-    if (uci[i])
-      uci[i] = ON;
-    else
-      uci[i] = OFF;
+  const int total = static_cast<int>(uci.size());
+  unsigned char* d = uci.data();
+  for (int i = 0; i < total; i++) {
+    d[i] = d[i] ? ON : OFF;
   }
 
   int flag;
@@ -735,10 +427,8 @@ static void thin(ByteArray &uci) {
     for (int j = 0; j < 8; j += 2) {
       for (int x = 1; x < w; x++)
         for (int y = 1; y < h; y++) {
-          if (uci(x, y) != ON)
-            continue;
-          if (uci(x + nx[j], y + ny[j]) != OFF)
-            continue;
+          if (uci(x, y) != ON) continue;
+          if (uci(x + nx[j], y + ny[j]) != OFF) continue;
           int b = 0;
           for (int i = 7; i >= 0; i--) {
             b <<= 1;
@@ -751,90 +441,75 @@ static void thin(ByteArray &uci) {
             flag = 1;
           }
         }
-      if (!flag)
-        continue;
+      if (!flag) continue;
       for (int x = 1; x < w; x++)
         for (int y = 1; y < h; y++)
-          if (uci(x, y) == DEL)
-            uci(x, y) = OFF;
+          if (uci(x, y) == DEL) uci(x, y) = OFF;
     }
   } while (flag);
 
-  for (int i = 0, n = uci.length(); i < n; i++) {
-    if (uci[i] == SKEL)
-      uci[i] = 255;
-    else
-      uci[i] = 0;
+  for (int i = 0; i < total; i++) {
+    d[i] = (d[i] == SKEL) ? 255 : 0;
   }
-};
+}
 
-inline float point_line_dist(vec2 p, vec2 a, vec2 b) {
+static float point_line_dist(vec2 p, vec2 a, vec2 b) {
   vec2 delta = b - a;
   float mag = delta.magnitude();
   // if the distance is small, just return the point distance;
   // that's the right thing for approx_chain
-  if (mag < 1e-4)
-    return a.distance(p);
+  if (mag < 1e-4f) return a.distance(p);
   vec2 normal = delta.normal() / mag;
   float offset = normal * a;
-  return fabs(normal * p - offset);
+  return std::fabs(normal * p - offset);
 }
 
-static void approx_chain(IntArray &breaks, Vec2Array &chain, int i0, int i1, float maxdist) {
-  float md = 0.0;
+static void approx_chain(std::vector<int>& breaks, const std::vector<vec2>& chain, int i0, int i1,
+                         float maxdist) {
+  float md = 0.0f;
   int mi = -1;
-  vec2 a = chain[i0];
-  vec2 b = chain[i1];
+  vec2 a = chain[static_cast<std::size_t>(i0)];
+  vec2 b = chain[static_cast<std::size_t>(i1)];
   for (int i = i0; i <= i1; i++) {
-    float d = point_line_dist(chain[i], a, b);
-    // printf("%d %g %g %g\n",i,d,a.distance(chain[i]),b.distance(chain[i]));
-    if (d <= md)
-      continue;
+    float d = point_line_dist(chain[static_cast<std::size_t>(i)], a, b);
+    if (d <= md) continue;
     md = d;
     mi = i;
   }
-  // printf("i0 %d i1 %d mi %d md %g maxdist %g\n",i0,i1,mi,md,maxdist);
-  if (md < maxdist)
-    return;
-  ASSERT(mi != i0 && mi != i1);
+  if (md < maxdist) return;
+  assert(mi != i0 && mi != i1);
   approx_chain(breaks, chain, i0, mi, maxdist);
-  breaks.push(mi);
+  breaks.push_back(mi);
   approx_chain(breaks, chain, mi, i1, maxdist);
 }
 
 struct ChainTracer {
   enum { OFF = 0, ON = 1, DONE = 2 };
 
-  ByteArray bi;
-  int sx, sy;
-  int x, y;
-  int w, h;
+  ByteImage bi;
+  int sx = 0;
+  int sy = 0;
+  int x = 0;
+  int y = 0;
+  int w = 0;
+  int h = 0;
 
-  int count_neighbors() {
+  int count_neighbors() const {
     int nn = 0;
-    if (bi(x + 1, y))
-      nn++;
-    if (bi(x + 1, y + 1))
-      nn++;
-    if (bi(x, y + 1))
-      nn++;
-    if (bi(x - 1, y + 1))
-      nn++;
-    if (bi(x - 1, y))
-      nn++;
-    if (bi(x - 1, y - 1))
-      nn++;
-    if (bi(x, y - 1))
-      nn++;
-    if (bi(x + 1, y - 1))
-      nn++;
+    if (bi(x + 1, y)) nn++;
+    if (bi(x + 1, y + 1)) nn++;
+    if (bi(x, y + 1)) nn++;
+    if (bi(x - 1, y + 1)) nn++;
+    if (bi(x - 1, y)) nn++;
+    if (bi(x - 1, y - 1)) nn++;
+    if (bi(x, y - 1)) nn++;
+    if (bi(x + 1, y - 1)) nn++;
     return nn;
   }
 
   bool nextpixel() {
     if (bi(x + 1, y) == ON) {
       x = x + 1;
-      y = y;
       return true;
     }
     if (bi(x + 1, y + 1) == ON) {
@@ -843,7 +518,6 @@ struct ChainTracer {
       return true;
     }
     if (bi(x, y + 1) == ON) {
-      x = x;
       y = y + 1;
       return true;
     }
@@ -854,7 +528,6 @@ struct ChainTracer {
     }
     if (bi(x - 1, y) == ON) {
       x = x - 1;
-      y = y;
       return true;
     }
     if (bi(x - 1, y - 1) == ON) {
@@ -863,7 +536,6 @@ struct ChainTracer {
       return true;
     }
     if (bi(x, y - 1) == ON) {
-      x = x;
       y = y - 1;
       return true;
     }
@@ -878,10 +550,8 @@ struct ChainTracer {
   bool nextstart() {
     for (; sx < w; sx++)
       for (sy = 0; sy < h; sy++) {
-        if (!bi(sx, sy))
-          continue;
-        if (bi(sx, sy) == DONE)
-          continue;
+        if (!bi(sx, sy)) continue;
+        if (bi(sx, sy) == DONE) continue;
         x = sx;
         y = sy;
         return true;
@@ -889,172 +559,176 @@ struct ChainTracer {
     return false;
   }
 
-  void set_image(ByteArray &image) {
-    w = image.dim(0);
-    h = image.dim(1);
+  void set_image(const ByteImage& image) {
+    const int iw = image.extent(0);
+    const int ih = image.extent(1);
+    bi = ByteImage(iw, ih);
+    const int total = static_cast<int>(image.size());
+    for (int i = 0; i < total; i++) bi.data()[i] = image.data()[i] ? ON : OFF;
+    for (int i = 0; i < iw; i++) {
+      bi(i, 0) = OFF;
+      bi(i, ih - 1) = OFF;
+    }
+    for (int j = 0; j < ih; j++) {
+      bi(0, j) = OFF;
+      bi(iw - 1, j) = OFF;
+    }
+    w = iw - 1;
+    h = ih - 1;
     x = 0;
     y = 0;
     sx = 0;
     sy = 0;
-    bi.resize(w, h);
-    for (int i = 0, n = image.length(); i < n; i++)
-      bi[i] = image[i] ? ON : OFF;
-    for (int i = 0; i < w; i++)
-      bi(i, 0) = bi(i, h - 1) = OFF;
-    for (int j = 0; j < h; j++)
-      bi(0, j) = bi(w - 1, j) = OFF;
-    w--;
-    h--;
   }
 
-  bool get_chain(Vec2Array &points, bool close = false) {
+  bool get_chain(std::vector<vec2>& points, bool close = false) {
     points.clear();
-    if (!nextstart())
-      return false;
+    if (!nextstart()) return false;
     do {
-      points.push() = vec2(x, y);
+      points.push_back(vec2(static_cast<float>(x), static_cast<float>(y)));
       bi(x, y) = DONE;
     } while (nextpixel());
     x = sx;
     y = sy;
     if (nextpixel()) {
       // sweep up the other direction (if any)
-      reverse(points);
+      std::reverse(points.begin(), points.end());
       do {
-        points.push() = vec2(x, y);
+        points.push_back(vec2(static_cast<float>(x), static_cast<float>(y)));
         bi(x, y) = DONE;
       } while (nextpixel());
     }
-    if (close && points[0].distance(points[points.length() - 1]) < 2.0) {
+    if (close && !points.empty() && points.front().distance(points.back()) < 2.0f) {
       // close circular chains
-      points.push(points[0]);
+      points.push_back(points.front());
     }
     return true;
   }
 
-  IntArray breaks;
-  Vec2Array chain;
+  std::vector<int> breaks;
+  std::vector<vec2> chain;
 
-  bool get_poly(Vec2Array &poly, float maxdist = 1.0, bool close = false) {
+  bool get_poly(std::vector<vec2>& poly, float maxdist = 1.0f, bool close = false) {
     poly.clear();
     breaks.clear();
-    if (!get_chain(chain, close))
-      return false;
-    if (chain.length() < 3) {
-      for (int i = 0; i < chain.length(); i++)
-        poly.push(chain[i]);
+    if (!get_chain(chain, close)) return false;
+    if (chain.size() < 3) {
+      for (const vec2& v : chain) poly.push_back(v);
     } else {
-      breaks.push(0);
-      approx_chain(breaks, chain, 0, chain.length() - 1, maxdist);
-      breaks.push(chain.length() - 1);
-      for (int i = 0; i < breaks.length(); i++)
-        poly.push(chain[breaks[i]]);
+      breaks.push_back(0);
+      approx_chain(breaks, chain, 0, static_cast<int>(chain.size()) - 1, maxdist);
+      breaks.push_back(static_cast<int>(chain.size()) - 1);
+      for (int i : breaks) poly.push_back(chain[static_cast<std::size_t>(i)]);
     }
     return true;
   }
 
-  bool started() { return bi.dim(0) > 0; }
+  bool started() const { return bi.size() > 0; }
 
   void clear() {
-    bi.clear();
+    bi = ByteImage();
     breaks.clear();
     chain.clear();
   }
 };
 
 struct CEdges : EdgeDetector {
-  float p_sx;
-  float p_sy;
-  float p_frac;
-  float p_tlow;
-  float p_thigh;
-  float p_minlength;
-  float p_maxdist;
+  float p_sx = 3.0f;
+  float p_sy = 3.0f;
+  float p_frac = 0.3f;
+  float p_tlow = 2.0f;
+  float p_thigh = 4.0f;
+  float p_minlength = 5.0f;
+  float p_maxdist = 0.5f;
+  float noise = 0.0f;
 
-  CEdges() {
-    p_sx = 3.0;
-    p_sy = p_sx;
-    p_frac = 0.3;
-    p_tlow = 2.0;
-    p_thigh = 4.0;
-    p_minlength = 5.0;
-    p_maxdist = 0.5;
-  }
+  FloatImage image;
+  ByteImage uedges;
+  FloatImage smoothed;
+  FloatImage gradm;
+  FloatImage gradx;
+  FloatImage grady;
+  ByteImage edges;
+  ChainTracer tracer;
 
-  ~CEdges() {}
+  std::vector<vec2> chain;
+  std::vector<int> breaks;
 
-  void set_gauss(float sx, float sy) {
+  struct Sample {
+    vec2 c;
+    vec2 g;
+    int n;
+  };
+  std::vector<Sample> samples;
+
+  void set_gauss(float sx, float sy) override {
     p_sx = sx;
     p_sy = sy;
   }
-
-  void set_noise(float frac, float low, float high) {
+  void set_noise(float frac, float low, float high) override {
     p_frac = frac;
     p_tlow = low;
     p_thigh = high;
   }
-
-  void set_poly(float minlength, float maxdist) {
+  void set_poly(float minlength, float maxdist) override {
     p_minlength = minlength;
     p_maxdist = maxdist;
   }
 
-  FloatArray image;
-  ByteArray uedges;
-  FloatArray smoothed;
-  FloatArray gradm, gradx, grady;
-  ByteArray edges;
-  ChainTracer tracer;
-  float noise;
-
-  void clear() {
-    image.clear();
-    uedges.clear();
-    smoothed.clear();
-    gradm.clear();
-    gradx.clear();
-    grady.clear();
-    edges.clear();
+  void clear() override {
+    image = FloatImage();
+    uedges = ByteImage();
+    smoothed = FloatImage();
+    gradm = FloatImage();
+    gradx = FloatImage();
+    grady = FloatImage();
+    edges = ByteImage();
     tracer.clear();
-    noise = 0.0;
+    chain.clear();
+    breaks.clear();
+    samples.clear();
+    noise = 0.0f;
   }
-  void load_pnm(FILE *file) {
-    ByteArray bimage;
-    read_pnm(bimage, file);
-    image.copy(bimage);
-  }
-  void load_pnm(const char *file) {
-    ByteArray bimage;
-    read_pnm(bimage, file);
-    image.copy(bimage);
-  }
-  void save_pnm(FILE *file) { write_pnm(file, edges); }
-  void save_pnm(const char *file) { write_pnm(file, edges); }
-  int dim(int i) { return image.dim(i); }
-  void set_image(unsigned char *p, int w, int h) {
-    image.resize(w, h);
-    for (int i = 0; i < image.length(); i++)
-      image[i] = p[i];
-  }
-  void set_pixmap(unsigned char *p, int w, int h) {
-    image.resize(w, h);
-    for (int y = h - 1; y >= 0; y--)
-      for (int x = 0; x < w; x++)
-        image(x, y) = *p++;
-  }
-  void compute() {
-    int w = image.dim(0);
-    int h = image.dim(1);
 
-    smoothed.copy(image);
+  void load_pnm(std::istream& in) {
+    ByteImage bimage;
+    read_pnm(bimage, in);
+    copy_image(image, bimage);
+  }
+  void load_pnm(const char* file) override {
+    ByteImage bimage;
+    read_pnm(bimage, file);
+    copy_image(image, bimage);
+  }
+  void save_pnm(std::ostream& out) const { write_pnm(out, edges); }
+  void save_pnm(const char* file) override { write_pnm(file, edges); }
+
+  int dim(int i) const override { return image.extent(i); }
+
+  void set_image(unsigned char* p, int w, int h) override {
+    image = FloatImage(w, h);
+    const int n = static_cast<int>(image.size());
+    for (int i = 0; i < n; i++) image.data()[i] = static_cast<float>(p[i]);
+  }
+  void set_pixmap(unsigned char* p, int w, int h) override {
+    image = FloatImage(w, h);
+    for (int yy = h - 1; yy >= 0; yy--)
+      for (int xx = 0; xx < w; xx++) image(xx, yy) = static_cast<float>(*p++);
+  }
+
+  void compute() override {
+    const int w = image.extent(0);
+    const int h = image.extent(1);
+
+    copy_image(smoothed, image);
     gauss2d(smoothed, p_sx, p_sy);
 
-    gradm.resize(w, h);
-    gradx.resize(w, h);
-    grady.resize(w, h);
-    gradm = 0.0;
-    gradx = 0.0;
-    grady = 0.0;
+    gradm = FloatImage(w, h);
+    gradx = FloatImage(w, h);
+    grady = FloatImage(w, h);
+    fill_image(gradm, 0.0f);
+    fill_image(gradx, 0.0f);
+    fill_image(grady, 0.0f);
     for (int i = w - 2; i >= 0; i--)
       for (int j = h - 2; j >= 0; j--) {
         float v = smoothed(i, j);
@@ -1062,300 +736,287 @@ struct CEdges : EdgeDetector {
         float dy = smoothed(i, j + 1) - v;
         gradx(i, j) = dx;
         grady(i, j) = dy;
-        gradm(i, j) = sqrt(sqr(dx) + sqr(dy));
+        gradm(i, j) = std::sqrt(sqr(dx) + sqr(dy));
       }
 
     nonmaxsup(uedges, gradm, gradx, grady);
 
-    for (int i = 0, n = uedges.length(); i < n; i++)
-      if (uedges[i])
-        uedges[i] = 255;
+    {
+      const int n = static_cast<int>(uedges.size());
+      unsigned char* ud = uedges.data();
+      for (int i = 0; i < n; i++)
+        if (ud[i]) ud[i] = 255;
+    }
     thin(uedges);
 
-    ByteArray temp(0, 0);
+    ByteImage temp;
     noise = masked_fractile(gradm, temp, p_frac);
-    float low = p_tlow * noise;
-    float high = p_thigh * noise;
+    const float low = p_tlow * noise;
+    const float high = p_thigh * noise;
     hysteresis_thresholding(edges, gradm, uedges, low, high);
-    for (int i = 0; i < edges.length(); i++)
-      edges[i] = 255 * !!edges[i];
+    {
+      const int n = static_cast<int>(edges.size());
+      unsigned char* ed = edges.data();
+      for (int i = 0; i < n; i++) ed[i] = ed[i] ? 255 : 0;
+    }
 
     tracer.set_image(edges);
   }
-  void get_eimage(unsigned char *p, int w, int h) {
-    if (edges.dim(0) != w || edges.dim(1) != h)
-      throw std::length_error("output image has the wrong size");
-    for (int i = 0; i < edges.length(); i++)
-      p[i] = edges[i];
-  }
-  void get_epixmap(unsigned char *image, int w, int h) {
-    if (edges.dim(0) != w || edges.dim(1) != h)
-      throw std::length_error("output image has the wrong size");
-    for (int y = h - 1; y >= 0; y--)
-      for (int x = 0; x < w; x++)
-        *image++ = edges(x, y);
-  }
-  float gradient_magnitude(int x, int y) { return gradm(x, y); }
-  float gradient_angle(int x, int y) { return atan2(grady(x, y), gradx(x, y)); }
 
-  Vec2Array chain;
-  IntArray breaks;
+  void get_eimage(unsigned char* p, int w, int h) const override {
+    if (edges.extent(0) != w || edges.extent(1) != h)
+      throw std::length_error("output image has the wrong size");
+    const int n = static_cast<int>(edges.size());
+    for (int i = 0; i < n; i++) p[i] = edges.data()[i];
+  }
+  void get_epixmap(unsigned char* out, int w, int h) const override {
+    if (edges.extent(0) != w || edges.extent(1) != h)
+      throw std::length_error("output image has the wrong size");
+    for (int yy = h - 1; yy >= 0; yy--)
+      for (int xx = 0; xx < w; xx++) *out++ = edges(xx, yy);
+  }
+  float gradient_magnitude(int x, int y) const override { return gradm(x, y); }
+  float gradient_angle(int x, int y) const override {
+    return std::atan2(grady(x, y), gradx(x, y));
+  }
 
-  bool nextchain() {
-    if (!tracer.get_chain(chain))
-      return false;
+  bool nextchain() override {
+    if (!tracer.get_chain(chain)) return false;
     breaks.clear();
-    breaks.push(0);
-    approx_chain(breaks, chain, 0, chain.length() - 1, p_maxdist);
-    breaks.push(chain.length() - 1);
+    breaks.push_back(0);
+    approx_chain(breaks, chain, 0, static_cast<int>(chain.size()) - 1, p_maxdist);
+    breaks.push_back(static_cast<int>(chain.size()) - 1);
     return true;
   }
-  int npoints() { return chain.length(); }
-  void point(int index, float &x, float &y) {
-    x = chain[index][0];
-    y = chain[index][1];
+  int npoints() const override { return static_cast<int>(chain.size()); }
+  void point(int index, float& x, float& y) const override {
+    x = chain[static_cast<std::size_t>(index)][0];
+    y = chain[static_cast<std::size_t>(index)][1];
   }
-  int nsegments() { return breaks.length() - 1; }
-  void segment(int i, float &x0, float &y0, float &x1, float &y1, float &angle, float &magnitude,
-               int &n) {
+  int nsegments() const override { return static_cast<int>(breaks.size()) - 1; }
+  void segment(int i, float& x0, float& y0, float& x1, float& y1, float& angle, float& magnitude,
+               int& n) const override {
     i++;
-    int i0 = breaks[i - 1];
-    int i1 = breaks[i];
-    vec2 a = chain[i0];
-    vec2 b = chain[i1];
-    vec2 g = vec2(0.0, 0.0);
+    int i0 = breaks[static_cast<std::size_t>(i - 1)];
+    int i1 = breaks[static_cast<std::size_t>(i)];
+    vec2 a = chain[static_cast<std::size_t>(i0)];
+    vec2 b = chain[static_cast<std::size_t>(i1)];
+    vec2 g(0.0f, 0.0f);
     for (int j = i0; j <= i1; j++) {
-      int x = int(chain[j][0]);
-      int y = int(chain[j][1]);
-      g = g + vec2(gradx(x, y), grady(x, y));
+      int xx = static_cast<int>(chain[static_cast<std::size_t>(j)][0]);
+      int yy = static_cast<int>(chain[static_cast<std::size_t>(j)][1]);
+      g = g + vec2(gradx(xx, yy), grady(xx, yy));
     }
-    // g = g / (i1-i0+1);
     x0 = a[0];
     y0 = a[1];
     x1 = b[0];
     y1 = b[1];
     magnitude = g.magnitude();
     angle = g.angle();
-    while (angle < 0)
-      angle += 2 * M_PI;
+    while (angle < 0.0f) angle += 2.0f * static_cast<float>(M_PI);
     n = i1 - i0 + 1;
   }
-  struct Sample {
-    vec2 c;
-    vec2 g;
-    int n;
-  };
-  Array<Sample> samples;
+
   void sampleat(int spacing) {
     samples.clear();
-    for (int i = 1; i < breaks.length(); i++) {
-      int start = breaks[i - 1];
-      int end = breaks[i];
+    for (std::size_t k = 1; k < breaks.size(); k++) {
+      const int start = breaks[k - 1];
+      const int end = breaks[k];
       for (int j = start + spacing / 2; j < end; j += spacing) {
-        int j0 = max(0, j - spacing / 2);
-        int j1 = min(end, j + spacing / 2);
-        vec2 c = vec2(0, 0);
-        vec2 g = vec2(0, 0);
-        for (int k = j0; k <= j1; k++) {
-          int x = int(chain[k][0]);
-          int y = int(chain[k][1]);
-          c = c + vec2(x, y);
-          g = g + vec2(gradx(x, y), grady(x, y));
+        const int j0 = std::max(0, j - spacing / 2);
+        const int j1 = std::min(end, j + spacing / 2);
+        vec2 c(0.0f, 0.0f);
+        vec2 g(0.0f, 0.0f);
+        for (int kk = j0; kk <= j1; kk++) {
+          int xx = static_cast<int>(chain[static_cast<std::size_t>(kk)][0]);
+          int yy = static_cast<int>(chain[static_cast<std::size_t>(kk)][1]);
+          c = c + vec2(static_cast<float>(xx), static_cast<float>(yy));
+          g = g + vec2(gradx(xx, yy), grady(xx, yy));
         }
-        c = c / (j1 - j0 + 1);
-        // g = g / (j1-j0+1);
-        Sample &sample = samples.push();
-        sample.c = c;
-        sample.g = g;
-        sample.n = j1 - j0 + 1;
+        c = c / static_cast<float>(j1 - j0 + 1);
+        Sample s;
+        s.c = c;
+        s.g = g;
+        s.n = j1 - j0 + 1;
+        samples.push_back(s);
       }
     }
   }
-  int nsamples() { return samples.length(); }
-  void sample(int i, float &x, float &y, float &angle, float &mag, int &npoints) {
-    Sample &s = samples(i);
+  int nsamples() const { return static_cast<int>(samples.size()); }
+  void sample(int i, float& x, float& y, float& angle, float& mag, int& n_pts) const {
+    const Sample& s = samples[static_cast<std::size_t>(i)];
     x = s.c(0);
     y = s.c(1);
-    angle = atan2(s.g(1), s.g(0));
-    mag = hypot(s.g(0), s.g(1));
-    npoints = s.n;
+    angle = std::atan2(s.g(1), s.g(0));
+    mag = std::hypot(s.g(0), s.g(1));
+    n_pts = s.n;
   }
 };
 
 std::unique_ptr<EdgeDetector> makeEdgeDetector() { return std::make_unique<CEdges>(); }
-} // namespace iupr_cedges
+
+}  // namespace iupr_cedges
 
 #ifdef MAIN
 
 namespace iupr_cedges {
-inline int igetenv(const char *name, int dflt) {
-  int result = getenv(name) ? atoi(getenv(name)) : dflt;
+
+inline int igetenv(const char* name, int dflt) {
+  const char* env = std::getenv(name);
+  int result = env ? std::atoi(env) : dflt;
   int where = 0;
-  if (strcmp(name, "verbose_params"))
-    where = igetenv("verbose_params", 0);
+  if (std::strcmp(name, "verbose_params") != 0) where = igetenv("verbose_params", 0);
   switch (where) {
   case 1:
-    fprintf(stdout, "__param__ %s = %d\n", name, result);
+    std::cout << "__param__ " << name << " = " << result << "\n";
     break;
   case 2:
-    fprintf(stderr, "__param__ %s = %d\n", name, result);
-    break;
-  default:;
-  }
-  return result;
-}
-inline float fgetenv(const char *name, float dflt) {
-  float result = getenv(name) ? atof(getenv(name)) : dflt;
-  int where = igetenv("verbose_params", 0);
-  switch (where) {
-  case 1:
-    fprintf(stdout, "__param__ %s = %g\n", name, result);
-    break;
-  case 2:
-    fprintf(stderr, "__param__ %s = %g\n", name, result);
-    break;
-  default:;
-  }
-  return result;
-}
-inline double dgetenv(const char *name, double dflt) {
-  double result = getenv(name) ? atof(getenv(name)) : dflt;
-  int where = igetenv("verbose_params", 0);
-  switch (where) {
-  case 1:
-    fprintf(stdout, "__param__ %s = %g\n", name, result);
-    break;
-  case 2:
-    fprintf(stderr, "__param__ %s = %g\n", name, result);
-    break;
-  default:;
-  }
-  return result;
-}
-inline const char *sgetenv(const char *name, const char *dflt) {
-  const char *result = getenv(name) ? getenv(name) : dflt;
-  int where = igetenv("verbose_params", 0);
-  switch (where) {
-  case 1:
-    fprintf(stdout, "__param__ %s = %s\n", name, result);
-    break;
-  case 2:
-    fprintf(stderr, "__param__ %s = %s\n", name, result);
+    std::cerr << "__param__ " << name << " = " << result << "\n";
     break;
   default:;
   }
   return result;
 }
 
-const char *usage = "Usage:\n"
-                    "   cedges < input > output\n"
-                    "\n"
-                    "Input image must be in .pgm or .ppm format\n"
-                    "\n"
-                    "Parameters (via environment):\n"
-                    "   esx,esy    3.0       Gaussian sigma\n"
-                    "   efrac      0.3       Canny fraction\n"
-                    "   elow       2.0       Canny low threshold\n"
-                    "   ehigh      4.0       Canny high threshold\n"
-                    "   eminlength 5.0       min length of segment in polygonal approximation\n"
-                    "   emaxdist   1.5       max deviation in polygonal approximation\n"
-                    "   espacing   4         interval at which edges are sampled\n"
-                    "   eformat    segments  segments: output line segments\n"
-                    "                        sampled: output edge samples\n"
-                    "                        poly: output polygons\n"
-                    "                        chain: output chains of edge pixels\n"
-                    "                        map: output edge map in PBM format\n";
-} // namespace iupr_cedges
+inline float fgetenv(const char* name, float dflt) {
+  const char* env = std::getenv(name);
+  float result = env ? static_cast<float>(std::atof(env)) : dflt;
+  int where = igetenv("verbose_params", 0);
+  switch (where) {
+  case 1:
+    std::cout << "__param__ " << name << " = " << result << "\n";
+    break;
+  case 2:
+    std::cerr << "__param__ " << name << " = " << result << "\n";
+    break;
+  default:;
+  }
+  return result;
+}
 
-int main(int argc, char **argv) {
+inline const char* sgetenv(const char* name, const char* dflt) {
+  const char* env = std::getenv(name);
+  const char* result = env ? env : dflt;
+  int where = igetenv("verbose_params", 0);
+  switch (where) {
+  case 1:
+    std::cout << "__param__ " << name << " = " << result << "\n";
+    break;
+  case 2:
+    std::cerr << "__param__ " << name << " = " << result << "\n";
+    break;
+  default:;
+  }
+  return result;
+}
+
+const char* usage =
+    "Usage:\n"
+    "   cedges < input > output\n"
+    "\n"
+    "Input image must be in .pgm or .ppm format\n"
+    "\n"
+    "Parameters (via environment):\n"
+    "   esx,esy    3.0       Gaussian sigma\n"
+    "   efrac      0.3       Canny fraction\n"
+    "   elow       2.0       Canny low threshold\n"
+    "   ehigh      4.0       Canny high threshold\n"
+    "   eminlength 5.0       min length of segment in polygonal approximation\n"
+    "   emaxdist   1.5       max deviation in polygonal approximation\n"
+    "   espacing   4         interval at which edges are sampled\n"
+    "   eformat    segments  segments: output line segments\n"
+    "                        sampled: output edge samples\n"
+    "                        poly: output polygons\n"
+    "                        chain: output chains of edge pixels\n"
+    "                        map: output edge map in PBM format\n";
+
+}  // namespace iupr_cedges
+
+int main(int argc, char** argv) {
   using namespace iupr_cedges;
-  autodel<CEdges> cedges = new CEdges();
-  cedges->set_gauss(fgetenv("esx", 3.0), fgetenv("esy", 3.0));
-  cedges->set_noise(fgetenv("efrac", 0.3), fgetenv("elow", 2.0), fgetenv("ehigh", 4.0));
-  float eminlength = fgetenv("eminlength", 5.0);
-  cedges->set_poly(eminlength, fgetenv("emaxdist", 1.5));
-  const char *p_format = sgetenv("eformat", "segments");
-  int p_spacing = igetenv("espacing", 4);
+  auto cedges = std::make_unique<CEdges>();
+  cedges->set_gauss(fgetenv("esx", 3.0f), fgetenv("esy", 3.0f));
+  cedges->set_noise(fgetenv("efrac", 0.3f), fgetenv("elow", 2.0f), fgetenv("ehigh", 4.0f));
+  const float eminlength = fgetenv("eminlength", 5.0f);
+  cedges->set_poly(eminlength, fgetenv("emaxdist", 1.5f));
+  const char* p_format = sgetenv("eformat", "segments");
+  const int p_spacing = igetenv("espacing", 4);
 
-  if (argc > 2 || (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-?"))) ||
+  if (argc > 2 || (argc == 2 && (!std::strcmp(argv[1], "-h") || !std::strcmp(argv[1], "-?"))) ||
       (argc == 1 && isatty(0))) {
-    fprintf(stderr, "%s", usage);
-    exit(1);
+    std::cerr << usage;
+    return 1;
   }
 
   try {
     if (argc == 2)
       cedges->load_pnm(argv[1]);
     else
-      cedges->load_pnm(stdin);
-  } catch (const char *s) {
-    fprintf(stderr, "problem reading image: %s\n", s);
-    exit(2);
+      cedges->load_pnm(std::cin);
+  } catch (const std::exception& e) {
+    std::cerr << "problem reading image: " << e.what() << "\n";
+    return 2;
   } catch (...) {
-    fprintf(stderr, "problem reading image\n");
-    exit(2);
+    std::cerr << "problem reading image\n";
+    return 2;
   }
 
   cedges->compute();
 
-  if (!strcmp(p_format, "map")) {
-    ByteArray edges(cedges->dim(0), cedges->dim(1));
-    cedges->get_eimage(&edges(0, 0), edges.dim(0), edges.dim(1));
-    write_pnm(stdout, edges);
-  } else if (!strcmp(p_format, "chain")) {
+  if (!std::strcmp(p_format, "map")) {
+    ByteImage out_image(cedges->dim(0), cedges->dim(1));
+    cedges->get_eimage(out_image.data(), out_image.extent(0), out_image.extent(1));
+    write_pnm(std::cout, out_image);
+  } else if (!std::strcmp(p_format, "chain")) {
     while (cedges->nextchain()) {
       for (int i = 0; i < cedges->npoints(); i++) {
         float x, y;
         cedges->point(i, x, y);
-        printf("%g %g\n", x, y);
+        std::cout << x << " " << y << "\n";
       }
-      printf("\n");
+      std::cout << "\n";
     }
-  } else if (!strcmp(p_format, "poly")) {
+  } else if (!std::strcmp(p_format, "poly")) {
     while (cedges->nextchain()) {
       for (int i = 0; i < cedges->nsegments(); i++) {
         float x, y, x1, y1, a, w;
         int n;
         cedges->segment(i, x, y, x1, y1, a, w, n);
-        if (i == 0)
-          printf("%g %g\n", x, y);
-        printf("%g %g\n", x1, y1);
+        if (i == 0) std::cout << x << " " << y << "\n";
+        std::cout << x1 << " " << y1 << "\n";
       }
-      printf("\n");
+      std::cout << "\n";
     }
-  } else if (!strcmp(p_format, "segments")) {
+  } else if (!std::strcmp(p_format, "segments")) {
     while (cedges->nextchain()) {
       int count = 0;
       for (int i = 0; i < cedges->nsegments(); i++) {
         float x, y, x1, y1, a, w;
         int n;
         cedges->segment(i, x, y, x1, y1, a, w, n);
-        if (sqrt(sqr(x1 - x) + sqr(y1 - y)) < eminlength)
-          continue;
-        printf("%g %g %g %g  %g %g %d\n", static_cast<double>(x), static_cast<double>(y),
-               static_cast<double>(x1), static_cast<double>(y1), static_cast<double>(a),
-               static_cast<double>(w), n);
+        if (std::sqrt(sqr(x1 - x) + sqr(y1 - y)) < eminlength) continue;
+        std::cout << x << " " << y << " " << x1 << " " << y1 << "  " << a << " " << w << " " << n
+                  << "\n";
         count++;
       }
-      if (count > 0)
-        printf("\n");
+      if (count > 0) std::cout << "\n";
     }
-  } else if (!strcmp(p_format, "sampled")) {
+  } else if (!std::strcmp(p_format, "sampled")) {
     while (cedges->nextchain()) {
       cedges->sampleat(p_spacing);
       for (int i = 0; i < cedges->nsamples(); i++) {
         float x, y, a, w;
         int n;
         cedges->sample(i, x, y, a, w, n);
-        printf("%g %g  %g %g %d\n", static_cast<double>(x), static_cast<double>(y),
-               static_cast<double>(a), static_cast<double>(w), n);
+        std::cout << x << " " << y << "  " << a << " " << w << " " << n << "\n";
       }
-      printf("\n");
+      std::cout << "\n";
     }
   } else {
-    fprintf(stderr, "%s: unknown format\n", p_format);
-    exit(1);
+    std::cerr << p_format << ": unknown format\n";
+    return 1;
   }
+  return 0;
 }
 
 #endif
