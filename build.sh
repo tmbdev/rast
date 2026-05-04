@@ -28,7 +28,12 @@ WARNINGS="$WARNINGS -Wold-style-cast -Wcast-align -Woverloaded-virtual"
 #                         expressions on virtually every call site.
 # Both are mechanical to fix but invasive. Re-enable when addressed.
 
-COMMON="-std=c++20 $WARNINGS -fPIC -fvisibility=hidden -fvisibility-inlines-hidden"
+COMMON="-std=c++20 $WARNINGS -fPIC"
+# -fvisibility=hidden -fvisibility-inlines-hidden are deferred: with -flto in
+# the ultra config, hidden visibility causes the linker to discard the
+# make*() factories from librast.a before reaching rast/rast-test/main(). The
+# proper fix is a PROJECT_EXPORT macro on each public symbol; until that
+# lands, default visibility keeps all three configs linkable.
 
 case "$BUILD_TYPE" in
 debug)
@@ -38,7 +43,12 @@ production)
     CONFIG_FLAGS="-O2 -g"
     ;;
 ultra)
-    CONFIG_FLAGS="-O3 -DNDEBUG -flto"
+    # -flto deferred: librast.a is built with plain `ar`, which doesn't index
+    # LTO bitcode. The linker then can't find make*() factories when linking
+    # rast/rast-test against the archive. Re-enable when the Makefile uses
+    # gcc-ar / gcc-ranlib for librast.a (or the project moves to a single
+    # link-time .o list).
+    CONFIG_FLAGS="-O3 -DNDEBUG"
     ;;
 esac
 
