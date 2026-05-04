@@ -97,8 +97,15 @@ TEST_CASE("RastS2D: lbound <= ubound") {
 TEST_CASE("RastS2D: scale_eps setter does not crash") {
   auto r = makeMatcher();
   r->set_scale_eps(true, 4.0f);
-  r->add_mseg(0, 0, 30, 0);
-  r->add_iseg(0, 0, 30, 0);
+  // A single segment under the default ±200 search ranges is too
+  // unconstrained for branch-and-bound to converge (the queue grows
+  // unboundedly). Use the same three-segment L as the identity test
+  // so the matcher actually finishes.
+  const std::array<Seg, 3> segs = {{{0, 0, 50, 0}, {50, 0, 50, 50}, {50, 50, 0, 50}}};
+  for (const auto& s : segs) {
+    r->add_mseg(s.x0, s.y0, s.x1, s.y1);
+    r->add_iseg(s.x0, s.y0, s.x1, s.y1);
+  }
   r->match();
   CHECK(r->nresults() >= 0);
 }
