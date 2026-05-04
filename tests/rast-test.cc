@@ -42,6 +42,7 @@
   std::fprintf(stderr, "\n================ FINISHED %s\n", NAME__);                                \
   }
 
+#undef assert
 #define assert(X)                                                                                  \
   do {                                                                                             \
     if (!(X)) throw "ASSERTION FAILED: " #X;                                                       \
@@ -69,7 +70,7 @@ struct Segment {
 
 bool within(float x, float y, float eps) { return std::fabs(x - y) <= eps; }
 
-float uniform(float low, float high) { return drand48() * (high - low) + low; }
+float uniform(float low, float high) { return float(drand48()) * (high - low) + low; }
 int iuniform(int low, int high) { return lrand48() % (high - low) + low; }
 vec2 vuniform(float x0, float y0, float x1, float y1) {
   return vec2(uniform(x0, x1), uniform(y0, y1));
@@ -82,7 +83,7 @@ void test_linesp2d_1() {
     do {
       u = vuniform(0, 0, 512, 512);
       v = vuniform(0, 0, 512, 512);
-    } while (distance(u, v) < 1.0);
+    } while (distance(u, v) < 1.0f);
     Segment seg(u, v);
     float tol = 0.1, atol = 1e-4;
     lines->set_tolerance(tol, atol);
@@ -116,7 +117,7 @@ void test_liness2d_1() {
     do {
       u = vuniform(0, 0, 512, 512);
       v = vuniform(0, 0, 512, 512);
-    } while (distance(u, v) < 1.0);
+    } while (distance(u, v) < 1.0f);
     Segment seg(u, v);
     float tol = 0.1, atol = 1e-4;
     lines->set_tolerance(tol, atol);
@@ -125,7 +126,7 @@ void test_liness2d_1() {
     int npoints = iuniform(2, 200);
     for (int i = 0; i < npoints; i++) {
       vec2 p = seg.sample(i / float(npoints));
-      vec2 q = seg.sample(0.5 + i / float(npoints));
+      vec2 q = seg.sample(0.5f + i / float(npoints));
       lines->add_iseg(p[0], p[1], q[0], q[1], angle, 1.0);
     }
     lines->compute();
@@ -262,14 +263,14 @@ void test_rasts2d_1() {
     rast->set_tolerance(0.1);
     rast->match();
     assert(rast->nresults() > 0);
-    assert(within(rast->translation(0, 0), tr[0], 2.0 * eps));
-    assert(within(rast->translation(0, 1), tr[1], 2.0 * eps));
-    assert(within(rast->angle(0), alpha, 2.0 * aeps));
+    assert(within(rast->translation(0, 0), tr[0], 2.0f * eps));
+    assert(within(rast->translation(0, 1), tr[1], 2.0f * eps));
+    assert(within(rast->angle(0), alpha, 2.0f * aeps));
   }
   end_trials;
 }
 
-int main(int argc, char **argv) {
+int main() {
   srand48(0);
   test_rasts2d_1();
   test_rastp2d_2();

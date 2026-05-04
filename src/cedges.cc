@@ -1332,7 +1332,9 @@ int main(int argc, char **argv) {
         cedges->segment(i, x, y, x1, y1, a, w, n);
         if (sqrt(sqr(x1 - x) + sqr(y1 - y)) < eminlength)
           continue;
-        printf("%g %g %g %g  %g %g %d\n", x, y, x1, y1, a, w, n);
+        printf("%g %g %g %g  %g %g %d\n", static_cast<double>(x), static_cast<double>(y),
+               static_cast<double>(x1), static_cast<double>(y1), static_cast<double>(a),
+               static_cast<double>(w), n);
         count++;
       }
       if (count > 0)
@@ -1345,7 +1347,8 @@ int main(int argc, char **argv) {
         float x, y, a, w;
         int n;
         cedges->sample(i, x, y, a, w, n);
-        printf("%g %g  %g %g %d\n", x, y, a, w, n);
+        printf("%g %g  %g %g %d\n", static_cast<double>(x), static_cast<double>(y),
+               static_cast<double>(a), static_cast<double>(w), n);
       }
       printf("\n");
     }

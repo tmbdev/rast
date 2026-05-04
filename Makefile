@@ -13,13 +13,19 @@ all: rast-test rast cedges rast.so tests
 rast: rast.o librast.a
 rast-test: rast-test.o librast.a
 cedges: cedges.cc
-	$(CXX) -o cedges -DMAIN $< -DUNSAFE -O3
+	$(CXX) -Wno-error -o cedges -DMAIN $< -DUNSAFE -O3
 
 LIBRAST=cedges.o calignmentp2d.o cinstancep2d.o \
 	clinesp2d.o cliness2d.o crastp2d.o crastss2d.o crasts2d.o \
 	crastrs2d.o
 librast.a: $(LIBRAST)
 	ar cr $@ $^
+
+# cedges.cc is legacy code that doesn't conform to the strict warning set
+# (heavy float<->double mixing, internal shadowing). Compile it without
+# -Werror so the rest of the strict checks still apply project-wide.
+cedges.o: cedges.cc
+	$(CXX) -Wno-error -c $< -o $@
 
 # Python bindings via pybind11. The pybind11 headers are in the conda
 # environment's include path; PYINC is the matching Python.h dir.

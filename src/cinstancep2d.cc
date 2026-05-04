@@ -81,7 +81,7 @@ struct CInstanceP2D : InstanceP2D {
     for (int i = 0; i < nmodel_unoccluded; i++) {
       Ipoint p;
       p.p = cmul(rotation, msources[i].p) + translation + randomUniformVectorFromCircle(error);
-      p.a = msources[i].a + angle + urand(-aerror, aerror);
+      p.a = msources[i].a + angle + static_cast<float>(urand(-aerror, aerror));
       ipoints.push_back(p);
     }
     shuffle(msources);

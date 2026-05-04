@@ -120,8 +120,10 @@ struct IMPair {
   unsigned char l;
   short ipoint;
   IMPair() : msource(0), l(0), ipoint(0) {}
-  IMPair(int ms, int ip, float l_) : msource((unsigned char)ms), l((unsigned char)l_),
-                                     ipoint((short)ip) {}
+  IMPair(int ms, int ip, float l_)
+      : msource(static_cast<unsigned char>(ms)),
+        l(static_cast<unsigned char>(l_)),
+        ipoint(static_cast<short>(ip)) {}
 };
 
 using Pairs = std::vector<IMPair>;

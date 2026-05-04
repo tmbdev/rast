@@ -14,21 +14,31 @@ clang-format = "*"
 doctest = "*"
 pybind11 = "*"
 
-# Make the SWIG-built rast module importable from `pixi run python ...`.
+# Make the pybind11-built rast module importable from `pixi run python ...`.
+# Production first so `import rast` doesn't try to load a debug build with
+# ASan instrumentation (Python won't load such a .so without LD_PRELOAD).
 [activation.env]
-PYTHONPATH = "$PIXI_PROJECT_ROOT/_build"
+PYTHONPATH = "$PIXI_PROJECT_ROOT/_build/production:$PIXI_PROJECT_ROOT/_build/debug"
 
 [tasks.build]
-description = "Build librast.a, rast, rast-test, cedges, and _rast.so."
-cmd = "./build.sh"
+description = "Build the debug configuration (default for development)."
+cmd = "BUILD_TYPE=debug ./build.sh"
 
-[tasks.build-cpp]
-description = "Build the C++ targets only (skip the Python binding)."
-cmd = "./build.sh librast.a rast rast-test cedges"
+[tasks.build-debug]
+description = "Build the debug configuration (-O0 -g, ASan/UBSan, -Werror)."
+cmd = "BUILD_TYPE=debug ./build.sh"
+
+[tasks.build-production]
+description = "Build the production configuration (-O2 -g, assertions on)."
+cmd = "BUILD_TYPE=production ./build.sh"
+
+[tasks.build-ultra]
+description = "Build the ultra configuration (-O3 -DNDEBUG -flto)."
+cmd = "BUILD_TYPE=ultra ./build.sh"
 
 [tasks.test]
-description = "Build and run the doctest suite."
-cmd = "./build.sh tests && _build/tests"
+description = "Build and run the doctest suite under the debug config."
+cmd = "BUILD_TYPE=debug ./build.sh tests && _build/debug/tests"
 
 [tasks.clean]
 cmd = "rm -rf _build"

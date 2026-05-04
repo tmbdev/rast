@@ -42,7 +42,7 @@ TEST_CASE("LinesP2D: horizontal line at y=cy is recovered") {
   // Here y = cy means theta = pi/2 and offset = cy.
   const float theta = finder->angle(0);
   const float offset = finder->offset(0);
-  CHECK(std::cos(theta - M_PI_2) == doctest::Approx(1.0).epsilon(0.05));
+  CHECK(std::cos(theta - static_cast<float>(M_PI_2)) == doctest::Approx(1.0).epsilon(0.05));
   CHECK(offset == doctest::Approx(cy).epsilon(0.05));
 }
 
