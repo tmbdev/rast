@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
 #include "rast.h"
 #include "util.h"
@@ -19,7 +21,7 @@ namespace {
 struct File {
   FILE *fp{nullptr};
   File(const char *path, const char *mode) : fp(std::fopen(path, mode)) {
-    if (!fp) throw "open failed";
+    if (!fp) throw std::runtime_error(std::string("cannot open ") + path);
   }
   ~File() { close(); }
   File(const File &) = delete;
@@ -70,7 +72,7 @@ const char *usage = "Usage: rast subprogram ...\n"
                     "   minweight maxoffset lsq unoriented\n";
 
 int main_instance(int argc, char **argv) {
-  if (argc != 3) throw "wrong # args";
+  if (argc != 3) throw std::runtime_error("wrong # args");
   srand48(igetenv("seed", mkseed()));
   std::unique_ptr<InstanceP2D> instance(makeInstanceP2D());
   instance->set_image_size(igetenv("image_size", 512));
@@ -107,7 +109,7 @@ int main_instance(int argc, char **argv) {
 }
 
 int main_align(int argc, char **argv) {
-  if (argc != 3) throw "wrong # args";
+  if (argc != 3) throw std::runtime_error("wrong # args");
   std::unique_ptr<AlignmentP2D> align(makeAlignmentP2D());
   align->set_srange(fgetenv("minscale", 0.8), fgetenv("maxscale", 1.2));
   align->set_epsilon(fgetenv("error", 5.0));
@@ -116,14 +118,14 @@ int main_align(int argc, char **argv) {
   while (std::fgets(buf, sizeof buf, model)) {
     if (buf[0] == '#') continue;
     float x, y;
-    if (std::sscanf(buf, "%g %g", &x, &y) != 2) throw "bad format";
+    if (std::sscanf(buf, "%g %g", &x, &y) != 2) throw std::runtime_error("bad format");
     align->add_mpoint(x, y);
   }
   File image(argv[2], "r");
   while (std::fgets(buf, sizeof buf, image)) {
     if (buf[0] == '#') continue;
     float x, y;
-    if (std::sscanf(buf, "%g %g", &x, &y) != 2) throw "bad format";
+    if (std::sscanf(buf, "%g %g", &x, &y) != 2) throw std::runtime_error("bad format");
     align->add_ipoint(x, y);
   }
   align->compute();
@@ -133,7 +135,7 @@ int main_align(int argc, char **argv) {
 }
 
 int main_rastp2d(int argc, char **argv) {
-  if (argc != 3) throw "wrong # args";
+  if (argc != 3) throw std::runtime_error("wrong # args");
   std::unique_ptr<RastP2D> rast(makeRastP2D());
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
@@ -152,14 +154,14 @@ int main_rastp2d(int argc, char **argv) {
     if (buf[0] == '#') continue;
     float x, y, a, err = eps, aerr = aeps;
     int nfields = std::sscanf(buf, "%g %g %g %g %g", &x, &y, &a, &err, &aerr);
-    if (nfields < 3) throw "bad format";
+    if (nfields < 3) throw std::runtime_error("bad format");
     rast->add_msource(x, y, a, err, aerr);
   }
   File image(argv[2], "r");
   while (std::fgets(buf, sizeof buf, image)) {
     if (buf[0] == '#') continue;
     float x, y, a;
-    if (std::sscanf(buf, "%g %g %g", &x, &y, &a) != 3) throw "bad format";
+    if (std::sscanf(buf, "%g %g %g", &x, &y, &a) != 3) throw std::runtime_error("bad format");
     rast->add_ipoint(x, y, a);
   }
   rast->match();
@@ -172,7 +174,7 @@ int main_rastp2d(int argc, char **argv) {
 }
 
 int main_rasts2d(int argc, char **argv) {
-  if (argc != 3) throw "wrong # args";
+  if (argc != 3) throw std::runtime_error("wrong # args");
   std::unique_ptr<RastS2D> rast(makeRastS2D());
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
@@ -192,14 +194,14 @@ int main_rasts2d(int argc, char **argv) {
   while (std::fgets(buf, sizeof buf, model)) {
     if (buf[0] == '#') continue;
     float x, y, x1, y1;
-    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw "bad format";
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw std::runtime_error("bad format");
     rast->add_mseg(x, y, x1, y1);
   }
   File image(argv[2], "r");
   while (std::fgets(buf, sizeof buf, image)) {
     if (buf[0] == '#') continue;
     float x, y, x1, y1;
-    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw "bad format";
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw std::runtime_error("bad format");
     rast->add_iseg(x, y, x1, y1);
   }
   double start = now();
@@ -216,7 +218,7 @@ int main_rasts2d(int argc, char **argv) {
 }
 
 int main_rastss2d(int argc, char **argv) {
-  if (argc != 3) throw "wrong # args";
+  if (argc != 3) throw std::runtime_error("wrong # args");
   std::unique_ptr<RastSS2D> rast(makeRastSS2D());
   rast->set_maxresults(igetenv("maxresults", 1));
   rast->set_verbose(igetenv("verbose", 0));
@@ -243,7 +245,7 @@ int main_rastss2d(int argc, char **argv) {
   while (std::fgets(buf, sizeof buf, image)) {
     if (buf[0] == '#' || buf[0] == '\0' || buf[0] == '\n') continue;
     float x, y, x1, y1;
-    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw "bad format";
+    if (std::sscanf(buf, "%g %g %g %g", &x, &y, &x1, &y1) < 4) throw std::runtime_error("bad format");
     rast->add_iseg(x, y, x1, y1);
   }
   double start = now();
@@ -260,7 +262,7 @@ int main_rastss2d(int argc, char **argv) {
 }
 
 int main_lines(int argc, char **argv) {
-  if (argc != 2) throw "wrong # args";
+  if (argc != 2) throw std::runtime_error("wrong # args");
   std::unique_ptr<LinesP2D> rast(makeLinesP2D());
   bool usegrad = igetenv("usegrad", 0);
   bool useweights = igetenv("useweights", 0);
@@ -279,8 +281,8 @@ int main_lines(int argc, char **argv) {
     int fields = std::sscanf(buf, "%g %g %g %g", &x, &y, &a, &w);
     if (usegrad) a = normangleOf(a - M_PI / 2.0);
     if (fields < 2 && angle_error < 2 * M_PI)
-      throw "no angles available; set angle_error to >=2pi";
-    if (fields < 2 || fields > 4) throw "bad format";
+      throw std::runtime_error("no angles available; set angle_error to >=2pi");
+    if (fields < 2 || fields > 4) throw std::runtime_error("bad format");
     if (!useweights) w = 1.0;
     rast->add_ipoint(x, y, a, w);
   }
@@ -292,7 +294,7 @@ int main_lines(int argc, char **argv) {
 }
 
 int main_slines(int argc, char **argv) {
-  if (argc != 2) throw "wrong # args";
+  if (argc != 2) throw std::runtime_error("wrong # args");
   std::unique_ptr<LinesS2D> rast(makeLinesS2D());
   bool usegrad = igetenv("usegrad", 0);
   rast->set_maxresults(igetenv("maxresults", 1));
@@ -312,8 +314,8 @@ int main_slines(int argc, char **argv) {
     int fields = std::sscanf(buf, "%g %g %g %g %g %g", &x, &y, &x1, &y1, &a, &w);
     if (usegrad) a = normangleOf(a - M_PI / 2.0);
     if (fields < 4 && angle_error < 2 * M_PI)
-      throw "no angles available; set angle_error to >=2pi";
-    if (fields < 4 || fields > 6) throw "bad format";
+      throw std::runtime_error("no angles available; set angle_error to >=2pi");
+    if (fields < 4 || fields > 6) throw std::runtime_error("bad format");
     if (w == 0) w = std::sqrt(sqr(x1 - x) + sqr(y1 - y));
     rast->add_iseg(x, y, x1, y1, a, w);
   }
@@ -344,8 +346,8 @@ int main(int argc, char **argv) {
     if (!std::strcmp(argv[1], "ssrast")) return main_rastss2d(argc - 1, argv + 1);
     std::fprintf(stderr, "unknown subprogram\n");
     std::exit(1);
-  } catch (const char *error) {
-    std::fprintf(stderr, "error: %s\n", error);
+  } catch (const std::exception &e) {
+    std::fprintf(stderr, "error: %s\n", e.what());
     std::exit(2);
   }
 }

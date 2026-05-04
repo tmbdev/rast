@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -216,7 +218,7 @@ struct CRastS2D : RastS2D {
 
   double priority(CState state) {
     double priority = state->ubound + 1e-4 * state->lbound;
-    if (priority >= state->ubound + 1) throw "error";
+    assert(priority < state->ubound + 1);
     return priority;
   }
 
@@ -305,7 +307,8 @@ struct CRastS2D : RastS2D {
     this->ieps = ieps_;
   }
   void set_tolerance(float value) override {
-    if (value < 1e-3) throw "tolerance too small; would fail to converge occasionally";
+    if (value < 1e-3)
+      throw std::invalid_argument("tolerance too small; would fail to converge occasionally");
     tolerance = value;
   }
   void set_min_q(float min_q_) override { this->min_q = min_q_; }

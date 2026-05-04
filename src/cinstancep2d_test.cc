@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <stdexcept>
 
 #include "rast.h"
 
@@ -82,8 +83,8 @@ TEST_CASE("InstanceP2D: different seeds usually produce different parameters") {
 TEST_CASE("InstanceP2D: get_param out-of-range throws") {
   auto inst = makeFixedInstance();
   inst->generate();
-  CHECK_THROWS_AS(inst->get_param(4), const char *);
-  CHECK_THROWS_AS(inst->get_param(-1), const char *);
+  CHECK_THROWS_AS(inst->get_param(4), std::out_of_range);
+  CHECK_THROWS_AS(inst->get_param(-1), std::out_of_range);
 }
 
 TEST_CASE("InstanceP2D: model points fit within the configured model_size") {

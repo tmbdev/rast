@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -130,8 +132,10 @@ struct State {
   }
 
   void init(std::vector<Msource> &msources, std::vector<Ipoint> &ipoints, float sdist) {
-    if (msources.size() > 255) throw "too many line segments in model";
-    if (ipoints.size() > 32000) throw "too many line segments in image";
+    if (msources.size() > 255)
+      throw std::length_error("too many line segments in model (max 255)");
+    if (ipoints.size() > 32000)
+      throw std::length_error("too many line segments in image (max 32000)");
     depth = 0;
     region.low = {0.0f, 0.0f, 0.0f};
     region.high = {0.0f, 0.0f, 0.0f};
@@ -206,7 +210,7 @@ struct CRastSS2D : RastSS2D {
 
   double priority(CState state) {
     double priority = state->ubound + 1e-4 * state->lbound;
-    if (priority >= state->ubound + 1) throw "error";
+    assert(priority < state->ubound + 1);
     return priority;
   }
 
@@ -288,7 +292,8 @@ struct CRastSS2D : RastSS2D {
     this->sdist = sdist_;
   }
   void set_tolerance(float value) override {
-    if (value < 1e-3) throw "tolerance too small; would fail to converge occasionally";
+    if (value < 1e-3)
+      throw std::invalid_argument("tolerance too small; would fail to converge occasionally");
     tolerance = value;
   }
   void set_min_q(float min_q_) override { this->min_q = min_q_; }

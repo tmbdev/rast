@@ -56,6 +56,7 @@ Parameters (via environment):
 #include <ctype.h>
 
 #include <memory>
+#include <stdexcept>
 #include <string.h>
 #include <unistd.h>
 
@@ -108,7 +109,7 @@ struct Stdio {
   Stdio(const char *file, const char *mode) {
     stream = fopen(file, mode);
     if (!stream)
-      throw "open failed";
+      throw std::runtime_error("open failed");
   }
   ~Stdio() {
     if (stream) {
@@ -123,7 +124,7 @@ struct Stdio {
     }
     stream = fopen(file, mode);
     if (!stream)
-      throw "open failed";
+      throw std::runtime_error("open failed");
   }
   void close() {
     if (stream) {
@@ -138,7 +139,7 @@ struct Stdio {
     }
     stream = ::popen(file, mode);
     if (!stream)
-      throw "open failed";
+      throw std::runtime_error("open failed");
   }
   void pclose() {
     if (stream) {
@@ -151,7 +152,7 @@ struct Stdio {
 #define ASSERT(X)                                                                                  \
   do {                                                                                             \
     if (!(X))                                                                                      \
-      throw "ASSERTION FAILED: " #X;                                                               \
+      throw std::runtime_error("ASSERTION FAILED: " #X);                                                               \
   } while (0)
 #define RANGE(X, N) ASSERT(unsigned(X) < unsigned(N))
 
@@ -208,7 +209,7 @@ struct Array {
 
   void reshape(int d0, int d1 = 1) {
     if (d0 * d1 != size)
-      throw "incompatible reshape";
+      throw std::length_error("incompatible reshape");
     dims[0] = d0;
     dims[1] = d1;
   }
@@ -218,7 +219,7 @@ struct Array {
   T &operator()(int i0) {
 #ifndef UNSAFE
     if (unsigned(i0) >= unsigned(dims[0]))
-      throw "index error";
+      throw std::out_of_range("index error");
 #endif
     return data[i0];
   }
@@ -226,9 +227,9 @@ struct Array {
   T &operator()(int i0, int i1) {
 #ifndef UNSAFE
     if (unsigned(i0) >= unsigned(dims[0]))
-      throw "index error";
+      throw std::out_of_range("index error");
     if (unsigned(i1) >= unsigned(dims[1]))
-      throw "index error";
+      throw std::out_of_range("index error");
 #endif
     return data[i1 + dims[1] * i0];
   }
@@ -236,7 +237,7 @@ struct Array {
   int length() const { return size; }
   T &operator[](int i0) const {
     if (unsigned(i0) >= unsigned(size))
-      throw "index error";
+      throw std::out_of_range("index error");
     return data[i0];
   }
   T &push() {
@@ -255,7 +256,7 @@ struct Array {
   void push(T &obj) { push() = obj; }
   T &pop() {
     if (size < 1)
-      throw "index error (pop)";
+      throw std::out_of_range("index error (pop)");
     return data[--size];
   }
   void clear() { size = 0; }
@@ -405,38 +406,38 @@ typedef Array<vec2> Vec2Array;
 static int scanint(FILE *file) {
   int value;
   if (fscanf(file, "%d", &value) != 1)
-    throw "read_pnm: number format error in image";
+    throw std::runtime_error("read_pnm: number format error in image");
   return value;
 }
 
 static int getbyte(FILE *file) {
   int value = getc(file);
   if (value == -1)
-    throw "read_pnm: image short";
+    throw std::runtime_error("read_pnm: image short");
   return value;
 }
 
 static void read_pnm(ByteArray &image, FILE *file) {
   char cp = getc(file);
   if (cp != 'P')
-    throw "read_pnm: unknown foramt";
+    throw std::runtime_error("read_pnm: unknown format");
   int ctype = getc(file) - '0';
   if (ctype != 2 && ctype != 3 && ctype != 5 && ctype != 6)
-    throw "read_pnm: cannot handle this type";
+    throw std::runtime_error("read_pnm: cannot handle this type");
   int params[3];
   int nparams = 0;
   while (nparams < 3) {
     int c = getc(file);
     if (c < 0)
-      throw "read_pnm: unexpected eof";
+      throw std::runtime_error("read_pnm: unexpected eof");
     if (isdigit(c)) {
       ungetc(c, file);
       if (fscanf(file, "%d", &params[nparams]) != 1)
-        throw "read_pnm: bad number format";
+        throw std::runtime_error("read_pnm: bad number format");
       nparams++;
       c = getc(file);
       if (!isspace(c))
-        throw "read_pnm: bad header format";
+        throw std::runtime_error("read_pnm: bad header format");
       continue;
     }
     if (c == '#') {
@@ -445,7 +446,7 @@ static void read_pnm(ByteArray &image, FILE *file) {
         if (c == '\n')
           break;
         if (c == -1)
-          throw "read_pnm: unexpected eof";
+          throw std::runtime_error("read_pnm: unexpected eof");
       }
     }
   }
@@ -467,7 +468,7 @@ static void read_pnm(ByteArray &image, FILE *file) {
         value = (getbyte(file) + getbyte(file) + getbyte(file)) / 3;
         break;
       default:
-        throw "bad type";
+        throw std::runtime_error("bad type");
       }
       image(i, j) = value;
     }
@@ -1083,13 +1084,13 @@ struct CEdges : EdgeDetector {
   }
   void get_eimage(unsigned char *p, int w, int h) {
     if (edges.dim(0) != w || edges.dim(1) != h)
-      throw "output image has the wrong size";
+      throw std::length_error("output image has the wrong size");
     for (int i = 0; i < edges.length(); i++)
       p[i] = edges[i];
   }
   void get_epixmap(unsigned char *image, int w, int h) {
     if (edges.dim(0) != w || edges.dim(1) != h)
-      throw "output image has the wrong size";
+      throw std::length_error("output image has the wrong size");
     for (int y = h - 1; y >= 0; y--)
       for (int x = 0; x < w; x++)
         *image++ = edges(x, y);

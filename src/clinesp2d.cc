@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE)
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <memory>
@@ -34,8 +35,8 @@ struct LineRegion {
   }
 
   void set(float th0_, float th1_, float r0_, float r1_) {
-    if (th1_ <= th0_) throw "parameters (th)";
-    if (r1_ <= r0_) throw "parameters (r)";
+    assert(th1_ > th0_);
+    assert(r1_ > r0_);
     this->th0 = th0_;
     this->th1 = th1_;
     this->r0 = r0_;

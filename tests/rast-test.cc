@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <memory>
 #include <vector>
 
@@ -30,6 +31,9 @@
   }                                                                                                \
   catch (const char *s) {                                                                          \
     std::fprintf(stderr, "\n%s: trial %d failed: %s\n", NAME__, TRIAL, s);                         \
+  }                                                                                                \
+  catch (const std::exception &e) {                                                                \
+    std::fprintf(stderr, "\n%s: trial %d failed: %s\n", NAME__, TRIAL, e.what());                  \
   }                                                                                                \
   catch (...) {                                                                                    \
     std::fprintf(stderr, "\n%s: trial %d failed with unknown exception\n", NAME__, TRIAL);         \

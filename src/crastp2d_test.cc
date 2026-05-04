@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 #include "rast.h"
@@ -150,5 +151,5 @@ TEST_CASE("RastP2D: clear_msources / clear_ipoints reset state") {
 
 TEST_CASE("RastP2D: tolerance below 1e-3 is rejected") {
   auto r = makeMatcher();
-  CHECK_THROWS_AS(r->set_tolerance(1e-6f), const char *);
+  CHECK_THROWS_AS(r->set_tolerance(1e-6f), std::invalid_argument);
 }

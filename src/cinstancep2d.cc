@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <random>
+#include <stdexcept>
 #include <vector>
 
 #include "rast.h"
@@ -58,7 +59,7 @@ struct CInstanceP2D : InstanceP2D {
       case 1: return translation[1];
       case 2: return angle;
       case 3: return scale;
-      default: throw "parameter index out of range";
+      default: throw std::out_of_range("InstanceP2D::get_param: index out of range");
     }
   }
 
